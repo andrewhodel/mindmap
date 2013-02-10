@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>mindmap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+        background-color: #f5f5f5;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
+      .form-signin {
+        max-width: 300px;
+        padding: 19px 29px 29px;
+        margin: 0 auto 20px;
+        background-color: #fff;
+        border: 1px solid #e5e5e5;
+        -webkit-border-radius: 5px;
+           -moz-border-radius: 5px;
+                border-radius: 5px;
+        -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+           -moz-box-shadow: 0 1px 2px rgba(0,0,0,.05);
+                box-shadow: 0 1px 2px rgba(0,0,0,.05);
+      }
+      .form-signin .form-signin-heading,
+      .form-signin .checkbox {
+        margin-bottom: 10px;
+      }
+      .form-signin input[type="text"],
+      .form-signin input[type="password"] {
+        font-size: 16px;
+        height: auto;
+        margin-bottom: 15px;
+        padding: 7px 9px;
+      }
+    .defHide {
+        display: none;
+    }
+    #loginErr {
+        display: none;
+    }
+    #preAuthDisplay {
+    }
+    #postAuthDisplay {
+        display: none;
+    }
+    </style>
+    <!--<link href="css/bootstrap-responsive.css" rel="stylesheet">-->
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Fav and touch icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="ico/apple-touch-icon-114-precomposed.png">
+      <link rel="apple-touch-icon-precomposed" sizes="72x72" href="ico/apple-touch-icon-72-precomposed.png">
+                    <link rel="apple-touch-icon-precomposed" href="ico/apple-touch-icon-57-precomposed.png">
+                                   <link rel="shortcut icon" href="ico/favicon.png">
+  </head>
+
+  <body>
+
+    <div id="log"><ul id="logE"></ul></div>
+
+    <div id="preAuthDisplay" class="container">
+
+      <form class="form-signin">
+        <h2 class="form-signin-heading">Please sign in</h2>
+        <input id="loginUsername" type="text" class="input-block-level" placeholder="Username">
+        <input id="loginPassword" type="password" class="input-block-level" placeholder="Password">
+        <p id="loginErr" class="alert"></p>
+        <button id="loginButton" class="btn btn-large btn-primary" type="submit">Sign in</button>
+      </form>
+
+    </div> <!-- /#preAuthDisplay -->
+
+    <div id="postAuthDisplay">
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#" onClick="window.location='/';">mindmap</a>
+          <div class="nav-collapse collapse">
+            <p class="navbar-text pull-right">
+              Logged in as <a href="#" id="logout" onClick="logOut();" class="navbar-link"></a>
+            </p>
+            <ul class="nav">
+              <li><a href="#" id="newZone">New Zone</a></li>
+              <li><a href="#" id="newGroup">New Group</a></li>
+              <li><a href="#" id="newHost">New Host</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <div class="well sidebar-nav">
+            <ul id="zonesNav" class="nav nav-list">
+            </ul>
+            <ul id="adminNav" class="nav nav-list">
+              <li class="nav-header">ADMIN</li>
+              <li><a href="#" onClick="accountsView();">Accounts</a></li>
+              <li><a href="#" onClick="writeLogView();">Write Log</a></li>
+            </ul>
+            <ul id="colsNav" class="nav nav-list">
+            </ul>
+          </div><!--/.well -->
+        </div><!--/span-->
+        <div class="span9">
+
+        <!-- views -->
+
+        <div class="defHide" id="newZoneView">
+
+        <h2>New Zone</h2>
+        <input id="newZoneViewName" type="text" class="" placeholder="Name" /><br />
+        <textarea id="newZoneViewNotes" placeholder="Notes" /></textarea><br />
+        <button id="newZoneViewButton" class="btn btn-large btn-primary" type="submit">Create Zone</button>
+
+        </div><!--newZoneView-->
+
+        <div class="defHide" id="newGroupView">
+
+        <h2>New Group</h2>
+        <input id="newGroupViewName" type="text" class="" placeholder="Name" /><br />
+        <textarea id="newGroupViewNotes" placeholder="Notes" /></textarea><br />
+        <h4>Parent Zone</h4>
+        <select id="newGroupViewZoneId"></select><br />
+        <button id="newGroupViewButton" class="btn btn-large btn-primary" type="submit">Create Group</button>
+
+        </div><!--newGroupView-->
+
+        <div class="defHide" id="newHostView">
+
+        <div style="float: left;">
+        <h2>New Host</h2>
+        <input id="newHostViewLogin" type="text" class="" placeholder="Login" /><br />
+        <input id="newHostViewKey" type="text" class="" placeholder="Key" /><br />
+        <input id="newHostViewName" type="text" class="" placeholder="Name" /><br />
+        <textarea id="newHostViewNotes" placeholder="Notes" /></textarea><br />
+        <input id="newHostViewLatitude" type="text" class="" placeholder="Latitude" /><br />
+        <input id="newHostViewLongitude" type="text" class="" placeholder="Longitude" /><br />
+        <input id="newHostViewWirelessMode" type="text" class="" placeholder="Wireless Mode" /><br />
+        <input id="newHostViewWds" type="text" class="" placeholder="WDS" /><br />
+        <input id="newHostViewChannel" type="text" class="" placeholder="Channel" /><br />
+        <input id="newHostViewVlan" type="text" class="" placeholder="VLAN" /><br />
+        <input id="newHostViewSsid" type="text" class="" placeholder="SSID" /><br />
+        <input id="newHostViewEncryption" type="text" class="" placeholder="Encryption" /><br />
+        <input id="newHostViewEncryptionKey" type="text" class="" placeholder="Encryption Key" /><br />
+        <h4>Parent Zone</h4>
+        <select id="newHostViewZoneId"></select><br />
+        <h4>Parent Group</h4>
+        <select id="newHostViewGroupId"></select><br />
+        <button id="newHostViewButton" class="btn btn-large btn-primary" type="submit">Create Host</button>
+        </div>
+        <div id="newHostViewMap"></div>
+
+        </div><!--newHostView-->
+
+        <div class="defHide" id="zoneView">
+        <h2 id="zoneViewTitle" class="editable" style="float: none;" contenteditable="true"></h2>
+          <div id="zoneViewUD"></div>
+          <p><pre id="zoneViewNotes" contenteditable="true" class="notesHolder"></pre></p>
+          <div id="zoneViewMap"></div>
+        <div id="zoneViewGroups"></div>
+        </div><!--zoneView-->
+
+        <div class="defHide" id="groupView">
+        <h2 id="groupViewTitle" class="editable" style="float: none;" contenteditable="true"></h2>
+          <div id="groupViewUD"></div>
+          <p><pre id="groupViewNotes" contenteditable="true" class="notesHolder"></pre></p>
+          <div id="groupViewMap"></div>
+        <div id="groupViewHosts"></div>
+        </div><!--groupView-->
+
+        <div class="defHide" id="accountsView">
+
+        <h2>Current Admins</h2>
+        <div id="accountsViewContent"></div>
+
+        <h2>New Admin</h2>
+        <input id="accountsViewUsername" type="text" class="" placeholder="Username" /><br />
+        <input id="accountsViewPassword" type="text" class="" placeholder="Password" /><br />
+        <input id="accountsViewEmail" type="text" class="" placeholder="Email" /><br />
+        <button id="accountsViewCreateAdmin" class="btn btn-large btn-primary" type="submit">Create Admin</button>
+
+        <h2>Update your Account</h2>
+        <input id="accountsViewChangePassword" type="text" class="" placeholder="New Password" /><br />
+        <input id="accountsViewChangeEmail" type="text" class="" placeholder="New Email" /><br />
+        <button id="accountsViewChangeSubmit" class="btn btn-large btn-primary" type="submit">Update</button>
+
+        </div><!--accountsView-->
+
+        <div class="defHide" id="writeLogView">
+        <div id="writeLogViewContent"></div>
+        </div><!--writeLogView-->
+
+        </div><!--/span-->
+      </div><!--/row-->
+
+      <hr>
+
+      <footer>
+        <p><a href="#">mindmap</a></p>
+      </footer>
+
+    </div><!--/.fluid-container-->
+    </div><!--/#postAuthDisplay-->
+
+    <script src="js/jquery-1.9.0.min.js"></script>
+    <script src="js/jquery.cookie.js"></script>
+    <script src="js/jquery.epochago.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=&sensor=false"></script>
+    <script src="js/config.js"></script>
+    <script src="js/mindmap.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+
+  </body>
+</html>
