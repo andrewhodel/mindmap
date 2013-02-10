@@ -314,7 +314,7 @@ router.post('/objectRelation').bind(function (req, res, params) {
             function(callback) {
                 // add relation to object
                 db.collection('r', function(err, collection) {
-                    collection.insert({'dId':new mongodb.ObjectID(params.dId),'o':new mongodb.ObjectID(params.id),'i':params.importance,'dI':params.dImportance}, function(err, docs) {
+                    collection.insert({'dId':new mongodb.ObjectID(params.dId),'oId':new mongodb.ObjectID(params.id),'i':params.importance,'dI':params.dImportance}, function(err, docs) {
                         callback(err, '');
                     });
                 });
@@ -322,7 +322,7 @@ router.post('/objectRelation').bind(function (req, res, params) {
             function(callback) {
                 // add relation to distint object
                 db.collection('r', function(err, collection) {
-                    collection.insert({'dId':new mongodb.ObjectID(params.id),'o':new mongodb.ObjectID(params.dId),'i':params.dImportance,'dI':params.importance}, function(err, docs) {
+                    collection.insert({'dId':new mongodb.ObjectID(params.id),'oId':new mongodb.ObjectID(params.dId),'i':params.dImportance,'dI':params.importance}, function(err, docs) {
                         callback(err, '');
                     });
                 });
@@ -400,7 +400,7 @@ router.del('/objectRelation').bind(function (req, res, params) {
             function(callback) {
                 // remove relation from object
                 db.collection('r', function(err, collection) {
-                    collection.remove({'dId':new mongodb.ObjectID(params.dId),'o':new mongodb.ObjectID(params.id)}, function(err, docs) {
+                    collection.remove({'dId':new mongodb.ObjectID(params.dId),'oId':new mongodb.ObjectID(params.id)}, function(err, docs) {
                         // remove importance from distint owner object
                         db.collection('o', function(err, collection) {
                             collection.update({'_id':new mongodb.ObjectID(params.dId)}, {'$inc':{'importance':-docs[0].i}}, {'safe':true}, function(err, docs) {
@@ -413,7 +413,7 @@ router.del('/objectRelation').bind(function (req, res, params) {
             function(callback) {
                 // remove relation from distint object
                 db.collection('r', function(err, collection) {
-                    collection.remove({'dId':new mongodb.ObjectID(params.id),'o':new mongodb.ObjectID(params.dId)}, function(err, docs) {
+                    collection.remove({'dId':new mongodb.ObjectID(params.id),'oId':new mongodb.ObjectID(params.dId)}, function(err, docs) {
                         // remove importance from owner object
                         db.collection('o', function(err, collection) {
                             collection.update({'_id':new mongodb.ObjectID(params.id)}, {'$inc':{'importance':-docs[0].i}}, {'safe':true}, function(err, docs) {
@@ -476,9 +476,9 @@ router.get('/objectRelations').bind(function (req, res, params) {
                 }
             },
             function(callback) {
-                // get related objects and weight
+                // get related objects and importance
                 db.collection('r', function(err, collection) {
-                    collection.find({'o':new mongodb.ObjectID(params.id)}).sort({'i':-1}).toArray(function(err, docs) {
+                    collection.find({'oId':new mongodb.ObjectID(params.id)}).sort({'i':-1}).toArray(function(err, docs) {
                         // place the data in results[2]
                         callback(err, docs);
                     });
