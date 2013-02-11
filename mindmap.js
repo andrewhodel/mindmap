@@ -3,6 +3,7 @@ var journey = require('journey');
 var mongodb = require('mongodb');
 var async = require('async');
 var bcrypt = require('bcrypt');
+var md = require("node-markdown").Markdown;
 var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {'auto_reconnect':true}), {journal:true});
 
 // Array.hasValue
@@ -116,13 +117,13 @@ router.get('/auth').bind(function (req, res, params) {
 });
 
 /*
-GET /objectsList - get objects in list form
+GET /objectsList - return a sorted list of objects
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-sort - STR name of field to sort by {'importance','created','lastView','lastEdit','numEdits','numViews'}
-order - STR order of sort
+sort - STR name of field to sort by ['importance','created','lastView','lastEdit','numEdits','numViews']
+reverseOrder - BOOLEAN true for <
 
 RESPONSE CODES
 200 - Valid
@@ -133,13 +134,25 @@ RESPONSE CODES
 router.get('/objectsList').bind(function (req, res, params) {
 	if (auth(params.username, params.password, res)) {
 
+        // build sort object
+        var validSorts = ['importance','created','lastView','lastEdit','numEdits','numViews'];
+        var so = {};
+        for (var i=0; i<validSorts.length; i++) {
+            if (params.sort == validSorts[i]) {
+                if (params.reverseOrder == true) {
+                    so[validSorts[i]] = 1;
+                } else {
+                    so[validSorts[i]] = -1;
+                }
+            }
+        }
+
         db.collection('o', function (err, collection) {
-            collection.find({}).toArray(function(err, docs) {
+            collection.find({}).sort(so).toArray(function(err, docs) {
                 if (err) {
                     res.send(500, {}, {'error':err});
                 } else {
                     res.send({'success':1, 'objects':docs});
-
                 }
             });
         });
@@ -148,7 +161,7 @@ router.get('/objectsList').bind(function (req, res, params) {
 });
 
 /*
-GET /objectsMap - build and return a top level map for all objects from object relationships
+GET /objectsMap - return object map
 
 AUTH REQUIRED
 
@@ -178,20 +191,22 @@ router.get('/objectsMap').bind(function (req, res, params) {
 });
 
 /*
-GET /object - get an object
+GET /objectData - get an object's data
 
 AUTH REQUIRED
 
 REQUEST PARAMS
 id* - STR id of object
+processed - BOOLEAN true will return post-processed data for types that support it
+blurb - BOOLEAN true will only return 200 characters and will not update the view counter
 
 RESPONSE CODES
 200 - Valid Object
-	returns json document object
+	returns json document objectData
 500 - Error
 	returns error
 */
-router.get('/object').bind(function (req, res, params) {
+router.get('/objectData').bind(function (req, res, params) {
 
 	if (auth(params.username, params.password, res)) {
 
@@ -210,13 +225,39 @@ router.get('/object').bind(function (req, res, params) {
                 }
             },
             function(callback) {
+                db.collection('o', function (err, collection) {
+                    if (params.blurb == 'true') {
+                        // just find, no modify
+                        collection.find({'_id':new mongodb.ObjectID(params.id)}).toArray(function(err, docs) {
+                            callback(err, docs[0]);
+                        });
+                    } else {
+                        // find and modify
+                        collection.findAndModify({'_id':new mongodb.ObjectID(params.id)}, [['_id','asc']], {'$set':{'lastView':Math.round((new Date()).getTime() / 1000)}}, {}, function(err, doc) {
+                            // place the object in results[2]
+                            callback(err, doc);
+                        });
+                    }
+                });
+            },
+            function(callback) {
                 // get data
-                db.collection('d', function(err, collection) {
+                db.collection('d', function (err, collection) {
                     collection.find({'oId':new mongodb.ObjectID(params.id)}).toArray(function(err, docs) {
-                        // place the data in results[2]
-                        callback(err, docs);
+                        // place the data in results[3]
+                        callback(err, docs[0].d);
                     });
                 });
+            },
+            function(callback) {
+                if (params.blurb != 'true') {
+                    db.collection('o', function (err, collection) {
+                        collection.update({_id:new mongodb.ObjectID(params.id)},{'$inc':{numViews:1}}, function(err) {});
+                        callback(null, '');
+                    });
+                } else {
+                    callback(null, '');
+                }
             }
 
         ], function(err, results) {
@@ -224,23 +265,29 @@ router.get('/object').bind(function (req, res, params) {
                 if (err) {
                     res.send(500, {}, {'error':err});
                 } else {
-                    db.collection('o', function (err, collection) {
-                        // find and modify lastView
-                        collection.findAndModify({'_id':new mongodb.ObjectID(params.id)}, [['_id','asc']], {'$set':{'lastView':Math.round((new Date()).getTime() / 1000)}}, {}, function(err, doc) {
-                            if (err) {
-                                res.send(500, {}, {'error':err});
-                            } else {
-                                if (doc) {
-                                    doc.data = results[2][0].data;
-                                    res.send({'success':1, 'object':doc});
-                                    //increment numViews
-                                    collection.update({_id:new mongodb.ObjectID(params.id)},{'$inc':{numViews:1}}, function(err) {});
-                                } else {
-                                    res.send(500, {}, {'error':'object not found'});
-                                }
-                            }
-                        });
-                    });
+
+                    var ht = '';
+
+                    if (params.processed == 'true' || results[2].defaultProcess == true) {
+                        // process the data first
+
+                        if (results[2].processType == 'md') {
+                            // markdown processing
+                            ht = md(results[3]);
+                        } else if (results[2].processType == 'nodejs') {
+                            // show run option
+                        }
+                    } else {
+                        // no processing, just hand over data
+                        ht = results[3];
+                    }
+
+                    if (params.blurb == 'true') {
+                        // limit the length of data to a blurb
+                        ht = ht.substring(0,200);
+                    }
+
+                    res.send({'success':1,'objectData':ht});
                 }
         });
 
@@ -505,8 +552,9 @@ AUTH REQUIRED
 
 REQUEST PARAMS
 name* - STR name of the object
-type* - STR type of the object, client defined except for reservedTypes[]
 data* - STR data of the object
+processType - STR nodejs, md
+defaultProcess - BOOLEAN true to always show post processed data
 
 RESPONSE CODES
 200 - Object Created
@@ -521,7 +569,7 @@ router.post('/object').bind(function (req, res, params) {
         async.series([
 
             function(callback) {
-                checkParams(params, ['name','type','data'], function(err) {
+                checkParams(params, ['name','data'], function(err) {
                     callback(err, '');
                 });
             },
@@ -532,7 +580,11 @@ router.post('/object').bind(function (req, res, params) {
                     res.send(500, {}, {'error':err});
                 } else {
                     db.collection('o', function (err, collection) {
-                        collection.insert({'name':params.name,'type':params.type,'created':Math.round((new Date()).getTime() / 1000)}, function(err, docs) {
+                        var i = {'name':params.name,'processType':params.processType,'created':Math.round((new Date()).getTime() / 1000)};
+                        if (params.defaultProcess == 'true') {
+                            i.defaultProcess = true;
+                        }
+                        collection.insert(i, function(err, docs) {
                             if (err) {
                                 res.send(500, {}, {'error':err});
                             } else {
@@ -559,9 +611,10 @@ AUTH REQUIRED
 
 REQUEST PARAMS
 id* - STR id of the object
-name* - STR name of the object
-type* - STR type of the object, client defined except for reservedTypes[]
-data* - STR data of the object
+name - STR name of the object
+data - STR data of the object
+processType - STR process type of object
+defaultProcess - BOOLEAN true to always show post processed data
 
 RESPONSE CODES
 200 - Valid Zone
@@ -610,7 +663,7 @@ router.put('/object').bind(function (req, res, params) {
             function(callback) {
                 // update o
 
-                editParams(params, ['name','type'], function(i) {
+                editParams(params, ['name','processType','defaultProcess'], function(i) {
 
                 db.collection('o', function (err, collection) {
                     i.lastEdit = Math.round((new Date()).getTime() / 1000);
