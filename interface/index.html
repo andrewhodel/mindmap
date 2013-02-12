@@ -73,7 +73,7 @@
 
           </div><!--/.well -->
         </div><!--/span-->
-        <div class="span10">
+        <!--<div class="span10">-->
 
         <!-- views -->
 
@@ -88,13 +88,37 @@
 
         </div><!--newObjectView-->
 
-        <div class="defHide" id="objectsListView">
+        <div class="defHide span10" id="objectsListView">
 
         <div id="objectsListViewObjects"></div>
 
         </div><!--objectsListView-->
 
-        </div><!--/span-->
+        <div class="span10 defHide" id="objectView">
+
+<div>
+<div contenteditable="true" id="objectViewName" class="pull-left" style="font-size: 2em; font-weight: bold;">Mindmap TODO</div>
+<div class="pull-right" style="font-size: .8em; color: #666;"><span id="objectViewViews"></span> (views) - <span id="objectViewEdits"></span> (edits) - <span id="objectViewImportance"></span> (importance)</div>
+<br class="clearfix">
+<hr style="margin: 2px;">
+<div class="pull-left" style="font-size: .8em; color: #666;"><span id="objectViewProcessType"></span> (process type) - <span id="objectViewDefaultProcess"></span> (always process)</div>
+<div class="pull-right" style="font-size: .8em; color: #666;">
+<span class="epochago" id="objectViewCreated"></span> (created) - <span class="epochago" id="objectViewLastEdit"></span> (last edit) - <span class="epochago" id="objectViewLastView"></span> (last view)
+</div>
+<br class="clearfix">
+<div contenteditable="true" id="objectViewData" class="well well-small" style="background-color: #fff; margin-left: 10px; white-space: pre-line;">
+</div>
+<span id="objectViewSubmit"></span>
+<br class="clearfix">
+<hr style="margin: 2px;">
+<div class="" style="font-size: .8em;">
+<a href="#&quot;">Related:</a>
+</div>
+</div>
+
+        </div><!--objectView-->
+
+        <!--</div>--><!--/span-->
       </div><!--/row-->
 
       <hr>

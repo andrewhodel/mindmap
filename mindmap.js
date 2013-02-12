@@ -14,6 +14,11 @@ Array.prototype.hasValue = function(value) {
 }
 
 function isValidMongoId(id) {
+
+    if (!id) {
+        return false;
+    }
+
     id = id.toLowerCase();
     var validChar='0123456789abcdef';
     var v = true;
@@ -122,6 +127,7 @@ GET /objectsList - return a sorted list of objects
 AUTH REQUIRED
 
 REQUEST PARAMS
+id - STR id of a single object to return
 sort - STR name of field to sort by ['importance','created','lastView','lastEdit','numEdits','numViews']
 reverseOrder - BOOLEAN true for <
 
@@ -134,21 +140,29 @@ RESPONSE CODES
 router.get('/objectsList').bind(function (req, res, params) {
 	if (auth(params.username, params.password, res)) {
 
-        // build sort object
-        var validSorts = ['importance','created','lastView','lastEdit','numEdits','numViews'];
         var so = {};
-        for (var i=0; i<validSorts.length; i++) {
-            if (params.sort == validSorts[i]) {
-                if (params.reverseOrder == true) {
-                    so[validSorts[i]] = 1;
-                } else {
-                    so[validSorts[i]] = -1;
+        var f = {};
+
+        if (isValidMongoId(params.id)) {
+            f._id = new mongodb.ObjectID(params.id);
+        } else {
+
+            // build sort object
+            var validSorts = ['id','importance','created','lastView','lastEdit','numEdits','numViews'];
+            for (var i=0; i<validSorts.length; i++) {
+                if (params.sort == validSorts[i]) {
+                    if (params.reverseOrder == true) {
+                        so[validSorts[i]] = 1;
+                    } else {
+                        so[validSorts[i]] = -1;
+                    }
                 }
             }
+
         }
 
         db.collection('o', function (err, collection) {
-            collection.find({}).sort(so).toArray(function(err, docs) {
+            collection.find(f).sort(so).toArray(function(err, docs) {
                 if (err) {
                     res.send(500, {}, {'error':err});
                 } else {

@@ -170,7 +170,7 @@ function objectsListView(sort, reverseOrder) {
             var h = '';
             // loop for overview
             for (var i=0; i<data.objects.length; i++) {
-                h += '<div id="object'+data.objects[i]._id+'" class="clearfix" style="background-color: rgb(245,245,245); border-radius: 4px; border: 1px solid #d3d3d3; padding: 8px; margin-bottom: 20px;">';
+                h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="clearfix" style="background-color: rgb(245,245,245); border-radius: 4px; border: 1px solid #d3d3d3; padding: 8px; margin-bottom: 20px;">';
                 h += '<div style="margin: 8px;">';
                 h += '<div class="pull-left" style="font-size: 2em; font-weight: bold;">'+data.objects[i].name+'</div>';
                 h += '<div class="pull-right" style="font-size: .8em; color: #666;">'+data.objects[i].numViews+' (views) - '+data.objects[i].numEdits+' (edits) - '+data.objects[i].importance+' (importance)</div>';
@@ -179,7 +179,7 @@ function objectsListView(sort, reverseOrder) {
                 if (data.objects[i].processType) {
                     h += '<div class="pull-left" style="font-size: .8em; color: #666;">'+data.objects[i].processType+' (process type) - '+data.objects[i].defaultProcess+' (always process)</div>';
                 }
-                h += '<div class="pull-right" style="font-size: .8em; color: #666;"><span class="epochago">'+data.objects[i].created+'</span> (created) - <span class="epochago">'+data.objects[i].lastEdit+'</span> (last edited) - <span class="epochago">'+data.objects[i].lastView+'</span> (last viewed)</div>';
+                h += '<div class="pull-right" style="font-size: .8em; color: #666;"><span class="epochago">'+data.objects[i].created+'</span> (created) - <span class="epochago">'+data.objects[i].lastEdit+'</span> (last edit) - <span class="epochago">'+data.objects[i].lastView+'</span> (last view)</div>';
                 h += '<br class="clearfix" />';
                 h += '<div class="well well-small" id="objectData'+data.objects[i]._id+'" style="background-color: #fff; margin-left: 10px; white-space: pre-line;">';
                 h += '</div>';
@@ -194,8 +194,12 @@ function objectsListView(sort, reverseOrder) {
 
             // loop for data
             for (var i=0; i<data.objects.length; i++) {
-                // show data
-                objectDataBlurb(data.objects[i]._id);
+
+                // get data
+                objectData(data.objects[i]._id, true, function(id, data) {
+                    $('#objectData'+id).html(data);
+                });
+
             }
 
         }
@@ -204,14 +208,57 @@ function objectsListView(sort, reverseOrder) {
 
 }
 
-function objectDataBlurb(id) {
-    apiCall('/objectData', 'GET', {'id':id,'blurb':true}, function (err, data) {
-        $('#objectData'+id).html(data.objectData);
+function objectView(id) {
+
+    apiCall('/objectsList', 'GET', {'id':id}, function (err, data) {
+
+        if (err) {
+            alert(err.error);
+        } else {
+
+            $('#objectViewName').html(data.objects[0].name);
+            $('#objectViewViews').html(data.objects[0].numViews);
+            $('#objectViewEdits').html(data.objects[0].numEdits);
+            $('#objectViewImportance').html(data.objects[0].importance);
+            $('#objectViewCreated').html(data.objects[0].created);
+            $('#objectViewLastEdit').html(data.objects[0].lastEdit);
+            $('#objectViewLastView').html(data.objects[0].lastView);
+            $('#objectViewProcessType').html(data.objects[0].processType);
+            $('#objectViewDefaultProcess').html(data.objects[0].defaultProcess);
+            $('#objectViewSubmit').html('<button onClick="updateObject(\''+data.objects[0]._id+'\'); return false;" class="btn btn-large btn-primary" type="submit">Update Object</button>');
+
+            // get data
+            objectData(data.objects[0]._id, false, function(id, data) {
+                $('#objectViewData').html(data);
+            });
+
+            showView('objectView');
+
+        }
+
+    });
+
+}
+
+function updateObject(id) {
+    apiCall('/object','PUT',{'id':id,'name':$('#objectViewName').html(),'data':$('#objectViewData').html(),'processType':$('#objectViewProcessType').html()}, function (err, data) {
+        if (err) {
+            alert(err.error);
+        } else {
+            alert('object updated');
+            objectView(id);
+        }
+    });
+}
+
+var objectData = function(id, blurb, cb) {
+    apiCall('/objectData', 'GET', {'id':id,'blurb':blurb}, function (err, data) {
+        cb(id,data.objectData);
     });
 }
 
 function showView(viewName) {
-    var views = ['newObjectView','objectsListView'];
+    var views = ['newObjectView','objectsListView','objectView'];
     for (var i = 0; i < views.length; i++) {
         $('#' + views[i]).hide();
     }
