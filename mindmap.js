@@ -282,7 +282,7 @@ router.get('/objectData').bind(function (req, res, params) {
 
                     var ht = '';
 
-                    if (params.processed == 'true' || results[2].defaultProcess == true) {
+                    if (params.processed == 'true') {
                         // process the data first
 
                         if (results[2].processType == 'md') {
@@ -568,7 +568,6 @@ REQUEST PARAMS
 name* - STR name of the object
 data* - STR data of the object
 processType - STR nodejs, md
-defaultProcess - BOOLEAN true to always show post processed data
 
 RESPONSE CODES
 200 - Object Created
@@ -595,9 +594,6 @@ router.post('/object').bind(function (req, res, params) {
                 } else {
                     db.collection('o', function (err, collection) {
                         var i = {'name':params.name,'processType':params.processType,'created':Math.round((new Date()).getTime() / 1000)};
-                        if (params.defaultProcess == 'true') {
-                            i.defaultProcess = true;
-                        }
                         collection.insert(i, function(err, docs) {
                             if (err) {
                                 res.send(500, {}, {'error':err});
@@ -628,7 +624,6 @@ id* - STR id of the object
 name - STR name of the object
 data - STR data of the object
 processType - STR process type of object
-defaultProcess - BOOLEAN true to always show post processed data
 
 RESPONSE CODES
 200 - Valid Zone
@@ -677,7 +672,7 @@ router.put('/object').bind(function (req, res, params) {
             function(callback) {
                 // update o
 
-                editParams(params, ['name','processType','defaultProcess'], function(i) {
+                editParams(params, ['name','processType'], function(i) {
 
                 db.collection('o', function (err, collection) {
                     i.lastEdit = Math.round((new Date()).getTime() / 1000);

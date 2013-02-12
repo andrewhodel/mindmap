@@ -43,7 +43,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </a>
-          <a class="brand" href="#" onClick="window.location='/';">mindmap</a>
+          <a class="brand" href="#" onClick="$('#objectsImportant').click();">mindmap</a>
           <div class="nav-collapse collapse">
             <p class="navbar-text pull-right">
               <a href="#" id="logout" onClick="logOut();" class="navbar-link">&times;</a>
@@ -97,23 +97,29 @@
         <div class="span10 defHide" id="objectView">
 
 <div>
-<div contenteditable="true" id="objectViewName" class="pull-left" style="font-size: 2em; font-weight: bold;">Mindmap TODO</div>
-<div class="pull-right" style="font-size: .8em; color: #666;"><span id="objectViewViews"></span> (views) - <span id="objectViewEdits"></span> (edits) - <span id="objectViewImportance"></span> (importance)</div>
-<br class="clearfix">
-<hr style="margin: 2px;">
-<div class="pull-left" style="font-size: .8em; color: #666;"><span id="objectViewProcessType"></span> (process type) - <span id="objectViewDefaultProcess"></span> (always process)</div>
-<div class="pull-right" style="font-size: .8em; color: #666;">
-<span class="epochago" id="objectViewCreated"></span> (created) - <span class="epochago" id="objectViewLastEdit"></span> (last edit) - <span class="epochago" id="objectViewLastView"></span> (last view)
-</div>
-<br class="clearfix">
-<div contenteditable="true" id="objectViewData" class="well well-small" style="background-color: #fff; margin-left: 10px; white-space: pre-line;">
-</div>
-<span id="objectViewSubmit"></span>
-<br class="clearfix">
-<hr style="margin: 2px;">
-<div class="" style="font-size: .8em;">
-<a href="#&quot;">Related:</a>
-</div>
+    <div contenteditable="true" id="objectViewName" class="pull-left" style="font-size: 2em; font-weight: bold;">Mindmap TODO</div>
+    <div class="pull-right" style="font-size: .8em; color: #666;"><span id="objectViewViews"></span> (views) - <span id="objectViewEdits"></span> (edits) - <span id="objectViewImportance"></span> (importance)</div>
+    <br class="clearfix">
+    <hr style="margin: 2px;">
+    <div class="pull-left" style="font-size: .8em; color: #666;"><span id="objectViewProcessType"></span> (process type)</div>
+    <div class="pull-right" style="font-size: .8em; color: #666;">
+        <span class="epochago" id="objectViewCreated"></span> (created) - <span class="epochago" id="objectViewLastEdit"></span> (last edit) - <span class="epochago" id="objectViewLastView"></span> (last view)
+    </div>
+    <br class="clearfix">
+
+    <div id="objectViewTabs"></div>
+
+    <div class="well well-small" style="background-color: #fff;">
+        <div contenteditable="true" id="objectViewData" style="white-space: pre-line;"></div>
+        <div id="objectViewProcessedData"></div>
+    </div>
+
+    <span id="objectViewSubmit"></span>
+    <br class="clearfix">
+    <hr style="margin: 2px;">
+    <div class="" style="font-size: .8em;">
+        <a href="#&quot;">Related:</a>
+    </div>
 </div>
 
         </div><!--objectView-->

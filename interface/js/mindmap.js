@@ -112,7 +112,6 @@ $('#newObjectViewSubmit').on("click", function (event) {
     apiCall('/object', 'POST', {
         'name': $('#newObjectViewName').val(),
         'processType': $('#newObjectViewProcessType').val(),
-        'defaultProcess': dp,
         'data': $('#newObjectViewData').val()
     }, function (err, data) {
 
@@ -177,7 +176,7 @@ function objectsListView(sort, reverseOrder) {
                 h += '<br class="clearfix" />';
                 h += '<hr style="margin: 2px;" />';
                 if (data.objects[i].processType) {
-                    h += '<div class="pull-left" style="font-size: .8em; color: #666;">'+data.objects[i].processType+' (process type) - '+data.objects[i].defaultProcess+' (always process)</div>';
+                    h += '<div class="pull-left" style="font-size: .8em; color: #666;">'+data.objects[i].processType+' (process type)</div>';
                 }
                 h += '<div class="pull-right" style="font-size: .8em; color: #666;"><span class="epochago">'+data.objects[i].created+'</span> (created) - <span class="epochago">'+data.objects[i].lastEdit+'</span> (last edit) - <span class="epochago">'+data.objects[i].lastView+'</span> (last view)</div>';
                 h += '<br class="clearfix" />';
@@ -196,7 +195,7 @@ function objectsListView(sort, reverseOrder) {
             for (var i=0; i<data.objects.length; i++) {
 
                 // get data
-                objectData(data.objects[i]._id, true, function(id, data) {
+                objectData(data.objects[i]._id, false, true, function(id, data) {
                     $('#objectData'+id).html(data);
                 });
 
@@ -224,18 +223,51 @@ function objectView(id) {
             $('#objectViewLastEdit').html(data.objects[0].lastEdit);
             $('#objectViewLastView').html(data.objects[0].lastView);
             $('#objectViewProcessType').html(data.objects[0].processType);
-            $('#objectViewDefaultProcess').html(data.objects[0].defaultProcess);
             $('#objectViewSubmit').html('<button onClick="updateObject(\''+data.objects[0]._id+'\'); return false;" class="btn btn-large btn-primary" type="submit">Update Object</button>');
 
+            var t = '<ul class="nav nav-tabs">';
+
+            // process by default would be set here
+            t += '<li id="objectViewDataTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Raw</a></li>';
+            t += '<li id="objectViewProcessedDataTab" class="active"><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Processed</a></li>';
+
+            t += '</ul>';
+
+            $('#objectViewTabs').html(t);
+            $('#objectViewData').html('');
+
             // get data
-            objectData(data.objects[0]._id, false, function(id, data) {
-                $('#objectViewData').html(data);
-            });
+            switchRPD(data.objects[0]._id);
 
             showView('objectView');
 
         }
 
+    });
+
+}
+
+function switchRPD(id) {
+
+    var p = false;
+
+    if ($('#objectViewDataTab').hasClass('active')) {
+
+        // switch to processed
+        p = true;
+        $('#objectViewProcessedDataTab').addClass('active');
+        $('#objectViewDataTab').removeClass('active');
+
+    } else {
+
+        // switch to raw
+        $('#objectViewDataTab').addClass('active');
+        $('#objectViewProcessedDataTab').removeClass('active');
+
+    }
+
+    objectData(id, p, false, function(id, data) {
+        $('#objectViewData').html(data);
     });
 
 }
@@ -251,8 +283,8 @@ function updateObject(id) {
     });
 }
 
-var objectData = function(id, blurb, cb) {
-    apiCall('/objectData', 'GET', {'id':id,'blurb':blurb}, function (err, data) {
+var objectData = function(id, processed, blurb, cb) {
+    apiCall('/objectData', 'GET', {'id':id,'blurb':blurb,'processed':processed}, function (err, data) {
         cb(id,data.objectData);
     });
 }
