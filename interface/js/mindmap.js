@@ -172,7 +172,7 @@ function objectsListView(sort, reverseOrder) {
             alert(err.error);
         } else {
 
-            var h = '<div class="row-fluid">';
+            var h = '<div class="row-fluid"><p style="font-size: .8em; color: #333;">by '+sort+'</p>';
             // loop for overview
             for (var i=0; i<data.objects.length; i++) {
 
@@ -180,8 +180,10 @@ function objectsListView(sort, reverseOrder) {
                     h += '</div><div class="row-fluid">';
                 }
 
-                h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="span2" style="">';
-                h += '<h4 style="border-bottom: 1px solid #333;">'+data.objects[i].name+'</h4>';
+                h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="span2" style="height:200px;overflow:hidden;';
+
+                h += '">';
+                h += '<p style="font-weight: bold; border-bottom: 1px solid #333;">'+data.objects[i].name+'</p>';
 
                 h += '<p id="objectData'+data.objects[i]._id+'" style="font-size: .8em; color: #666;"></p>';
 
