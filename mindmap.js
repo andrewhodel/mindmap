@@ -3,6 +3,7 @@ var journey = require('journey');
 var mongodb = require('mongodb');
 var async = require('async');
 var bcrypt = require('bcrypt');
+var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
 var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {'auto_reconnect':true}), {journal:true});
 
@@ -280,25 +281,45 @@ router.get('/objectData').bind(function (req, res, params) {
                     res.send(500, {}, {'error':err});
                 } else {
 
-                    var ht = '';
+                    var ht = results[3];
 
                     if (params.processed == 'true') {
-                        // process the data first
 
-                        if (results[2].processType == 'md') {
-                            // markdown processing
-                            ht = md(results[3]);
-                        } else if (results[2].processType == 'nodejs') {
-                            // show run option
+                        // could check if data has been previously processed and is not out of data here
+
+                        // check first line for !# which indicates this is a script
+                        if (results[3].substr(0,2) == '!#') {
+                            // explode on newline
+                            // character limit on script names
+                            var l = results[3].substr(0,100).split("\n");
+                            // get script name
+                            var sc = l[0].substr(2);
+
+                            if (sc == 'md') {
+                                // process markdown
+                                ht = md(results[3].split("\n").slice(1).join("\n"), true);
+                            } else {
+                                // return script not found
+                                ht = 'script type '+sc+' not found';
+                            }
+                        } else {
+                            // convert links to href
+                            ht = urlize(ht);
+
+                            // convert newlines to br
+                            ht = ht.replace(/\n/g, '<br />');
+
+                            // embed images
+
+                            // could do all kinds of fancy stuff here
                         }
-                    } else {
-                        // no processing, just hand over data
-                        ht = results[3];
+
                     }
 
                     if (params.blurb == 'true') {
                         // limit the length of data to a blurb
                         ht = ht.substring(0,200);
+                        ht = urlize(ht);
                     }
 
                     res.send({'success':1,'objectData':ht});
@@ -567,7 +588,6 @@ AUTH REQUIRED
 REQUEST PARAMS
 name* - STR name of the object
 data* - STR data of the object
-processType - STR nodejs, md
 
 RESPONSE CODES
 200 - Object Created
@@ -593,7 +613,7 @@ router.post('/object').bind(function (req, res, params) {
                     res.send(500, {}, {'error':err});
                 } else {
                     db.collection('o', function (err, collection) {
-                        var i = {'name':params.name,'processType':params.processType,'created':Math.round((new Date()).getTime() / 1000)};
+                        var i = {'name':params.name,'created':Math.round((new Date()).getTime() / 1000)};
                         collection.insert(i, function(err, docs) {
                             if (err) {
                                 res.send(500, {}, {'error':err});
@@ -623,7 +643,6 @@ REQUEST PARAMS
 id* - STR id of the object
 name - STR name of the object
 data - STR data of the object
-processType - STR process type of object
 
 RESPONSE CODES
 200 - Valid Zone
@@ -672,7 +691,7 @@ router.put('/object').bind(function (req, res, params) {
             function(callback) {
                 // update o
 
-                editParams(params, ['name','processType'], function(i) {
+                editParams(params, ['name'], function(i) {
 
                 db.collection('o', function (err, collection) {
                     i.lastEdit = Math.round((new Date()).getTime() / 1000);

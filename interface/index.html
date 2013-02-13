@@ -7,7 +7,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/screen.css" rel="stylesheet">
     <!-- Fav and touch icons -->
     <link rel="apple-touch-icon-precomposed" sizes="144x144" href="ico/apple-touch-icon-144-precomposed.png">
@@ -18,8 +18,6 @@
   </head>
 
   <body>
-
-    <div id="log"><ul id="logE"></ul></div>
 
     <div id="preAuthDisplay" class="container">
 
@@ -38,108 +36,109 @@
     <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container-fluid">
-          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </a>
           <a class="brand" href="#" onClick="$('#objectsImportant').click();">mindmap</a>
+
           <div class="nav-collapse collapse">
-            <p class="navbar-text pull-right">
-              <a href="#" id="logout" onClick="logOut();" class="navbar-link">&times;</a>
-            </p>
+
             <ul class="nav">
-              <li><a href="#" id="newObject">+new</a></li>
+              <li><a href="#" id="newObject">+New</a></li>
+              <li><a href="#" id="objectsImportant">Important</a></li>
+              <li><a href="#" id="objectsNewest">Newest</a></li>
+              <li><a href="#" id="objectsViewed">Recently Viewed</a></li>
+              <li><a href="#" id="objectsMostViewed">Most Viewed</a></li>
+              <li><a href="#" id="objectsUpdated">Recently Updated</a></li>
+              <li><a href="#" id="objectsMostUpdated">Most Updated</a></li>
+              </li>
             </ul>
           </div><!--/.nav-collapse -->
+
+    <form class="navbar-search pull-left">
+    <input type="text" class="search-query" placeholder="Search">
+    </form>
+
+    <p class="navbar-text pull-right">
+      <a href="#" id="logout" onClick="logOut();" class="navbar-link">Logout</a>
+    </p>
+
         </div>
       </div>
     </div>
 
     <div class="container-fluid">
-      <div class="row-fluid">
-        <div class="span2">
-          <div class="well sidebar-nav">
-
-            <ul id="" class="nav nav-list">
-              <li class="nav-header">OBJECTS</li>
-              <li><a href="#" id="objectsImportant">Important</a></li>
-              <li><a href="#" id="objectsNewest">Newest</a></li>
-              <li><a href="#" id="objectsUpdated">Recently Updated</a></li>
-              <li><a href="#" id="objectsMostUpdated">Most Updated</a></li>
-              <li><a href="#" id="objectsViewed">Recently Viewed</a></li>
-              <li><a href="#" id="objectsMostViewed">Most Viewed</a></li>
+        <div class="row-fluid" style="">
+            <ul class="breadcrumb" id="objectCrumbs" style="display: none;">
             </ul>
-
-          </div><!--/.well -->
-        </div><!--/span-->
-        <!--<div class="span10">-->
-
-        <!-- views -->
-
-        <div class="defHide span10" id="newObjectView">
-
-        <h2>New Object</h2>
-        <input id="newObjectViewName" type="text" class="" placeholder="Name" /><br />
-        <input id="newObjectViewProcessType" type="text" class="" placeholder="Process Type" /><br />
-        <label class="checkbox"><input type="checkbox" id="newObjectViewDefaultProcess"> show processed data by default</label><br />
-        <textarea id="newObjectViewData" placeholder="Data" /></textarea><br />
-        <button id="newObjectViewSubmit" class="btn btn-large btn-primary" type="submit">Create Object</button>
-
-        </div><!--newObjectView-->
-
-        <div class="defHide span10" id="objectsListView">
-
-        <div id="objectsListViewObjects"></div>
-
-        </div><!--objectsListView-->
-
-        <div class="span10 defHide" id="objectView">
-
-<div>
-    <div contenteditable="true" id="objectViewName" class="pull-left" style="font-size: 2em; font-weight: bold;">Mindmap TODO</div>
-    <div class="pull-right" style="font-size: .8em; color: #666;"><span id="objectViewViews"></span> (views) - <span id="objectViewEdits"></span> (edits) - <span id="objectViewImportance"></span> (importance)</div>
-    <br class="clearfix">
-    <hr style="margin: 2px;">
-    <div class="pull-left" style="font-size: .8em; color: #666;"><span id="objectViewProcessType"></span> (process type)</div>
-    <div class="pull-right" style="font-size: .8em; color: #666;">
-        <span class="epochago" id="objectViewCreated"></span> (created) - <span class="epochago" id="objectViewLastEdit"></span> (last edit) - <span class="epochago" id="objectViewLastView"></span> (last view)
-    </div>
-    <br class="clearfix">
-
-    <div id="objectViewTabs"></div>
-
-    <div class="well well-small" style="background-color: #fff;">
-        <div contenteditable="true" id="objectViewData" style="white-space: pre-line;"></div>
-        <div id="objectViewProcessedData"></div>
+        </div>
     </div>
 
-    <span id="objectViewSubmit"></span>
-    <br class="clearfix">
-    <hr style="margin: 2px;">
-    <div class="" style="font-size: .8em;">
-        <a href="#&quot;">Related:</a>
+    <div class="container-fluid">
+        <div class="row-fluid" style="">
+            <div style="display: none;" id="objectsListView" class="span12" style="">loading...</div><!--objectsListView-->
+        </div>
     </div>
-</div>
 
-        </div><!--objectView-->
+    <div class="container-fluid">
+        <div class="row-fluid" style="">
+            <div style="display: none;" id="newObjectView" class="span12" style="">
 
-        <!--</div>--><!--/span-->
-      </div><!--/row-->
+                <h2>New Object</h2>
+                <input id="newObjectViewName" type="text" class="" placeholder="Name" style="width: 70%;" /><br />
+                <textarea id="newObjectViewData" placeholder="Data" style="width: 70%; height: 400px;"></textarea><br />
+                <button id="newObjectViewSubmit" class="btn btn-large btn-primary" type="submit">Create Object</button>
 
-      <hr>
+            </div><!--newObjectView-->
+        </div>
+    </div>
 
-      <footer>
-        <p><a href="https://github.com/andrewhodel/mindmap">https://github.com/andrewhodel/mindmap</a></p>
-      </footer>
+    <div class="container-fluid">
+        <div class="row-fluid" style="">
+            <div style="display: none;" id="objectView" class="span10">
 
-    </div><!--/.fluid-container-->
+                <div contenteditable="true" id="objectViewName" class="pull-left" style="font-size: 2em; font-weight: bold;">Mindmap TODO</div>
+                <div class="pull-right" style="font-size: .8em; color: #666;"><span id="objectViewViews"></span> (views) - <span id="objectViewEdits"></span> (edits) - <span id="objectViewImportance"></span> (importance)</div>
+                <br class="clearfix">
+                <hr style="margin: 2px;">
+                <div class="pull-right" style="font-size: .8em; color: #666;">
+                    <span class="epochago" id="objectViewCreated"></span> (created) - <span class="epochago" id="objectViewLastEdit"></span> (last edit) - <span class="epochago" id="objectViewLastView"></span> (last view)
+                </div>
+                <br class="clearfix">
+
+                <div id="objectViewTabs"></div>
+
+                <div style="margin: 10px;">
+                    <textarea style="width: 100%; min-height: 400px;" id="objectViewData"></textarea>
+                    <div id="objectViewProcessedData"></div>
+                </div>
+
+                <hr style="margin: 2px;">
+                <br class="clearfix">
+                <span id="objectViewSubmit"></span>
+
+            </div><!--objectView-->
+
+            <div style="display: none;" id="objectViewRel" class="span2">
+                <div class="well sidebar-nav">
+                    <ul class="nav nav-list">
+                        <li class="nav-header">RELATED OBJECTS</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row-fluid" style="">
+            <hr />
+            <footer><p><a href="https://github.com/andrewhodel/mindmap">https://github.com/andrewhodel/mindmap</a></p></footer>
+        </div>
+    </div>
+
     </div><!--/#postAuthDisplay-->
 
     <script src="js/jquery-1.9.0.min.js"></script>
     <script src="js/jquery.cookie.js"></script>
     <script src="js/jquery.epochago.js"></script>
-    <script src="js/bootstrap.js"></script>
+    <script src="js/bootstrap.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/mindmap.js"></script>
 

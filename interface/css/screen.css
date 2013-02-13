@@ -1,7 +1,7 @@
       body {
         padding-top: 60px;
         padding-bottom: 40px;
-        background-color: #f5f5f5;
+        background-color: #ffffff;
       }
       .sidebar-nav {
         padding: 9px 0;
@@ -30,9 +30,6 @@
         margin-bottom: 15px;
         padding: 7px 9px;
       }
-    .defHide {
-        display: none;
-    }
     #loginErr {
         display: none;
     }

@@ -1,8 +1,13 @@
 // helper function for all API calls
 function apiCall(endpoint, requestType, requestData, callback) {
 
-    requestData.username = $('#loginUsername').val();
-    requestData.password = $('#loginPassword').val();
+    if ($.cookie('username') && $.cookie('password')) {
+        requestData.username = $.cookie('username');
+        requestData.password = $.cookie('password');
+    } else {
+        requestData.username = $('#loginUsername').val();
+        requestData.password = $('#loginPassword').val();
+    }
 
     var request = $.ajax({
         url: serverApi + endpoint,
@@ -44,6 +49,9 @@ function doLogin() {
     // hide #preAuthDisplay and show #postAuthDisplay
     $('#preAuthDisplay').hide('slow');
     $('#postAuthDisplay').show('slow');
+
+    // show default view
+    $('#objectsImportant').click();
 
     // start loopData and timer every 5 minutes
     loopData();
@@ -111,7 +119,6 @@ $('#newObjectViewSubmit').on("click", function (event) {
 
     apiCall('/object', 'POST', {
         'name': $('#newObjectViewName').val(),
-        'processType': $('#newObjectViewProcessType').val(),
         'data': $('#newObjectViewData').val()
     }, function (err, data) {
 
@@ -120,7 +127,6 @@ $('#newObjectViewSubmit').on("click", function (event) {
         } else {
             alert('Object: ' + $('#newObjectViewName').val() + ' created');
             $('#newObjectViewName').val('');
-            $('#newObjectViewProcessType').val('');
             $('#newObjectViewData').val('');
         }
 
@@ -166,29 +172,33 @@ function objectsListView(sort, reverseOrder) {
             alert(err.error);
         } else {
 
-            var h = '';
+            var h = '<div class="row-fluid">';
             // loop for overview
             for (var i=0; i<data.objects.length; i++) {
-                h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="clearfix" style="background-color: rgb(245,245,245); border-radius: 4px; border: 1px solid #d3d3d3; padding: 8px; margin-bottom: 20px;">';
-                h += '<div style="margin: 8px;">';
-                h += '<div class="pull-left" style="font-size: 2em; font-weight: bold;">'+data.objects[i].name+'</div>';
-                h += '<div class="pull-right" style="font-size: .8em; color: #666;">'+data.objects[i].numViews+' (views) - '+data.objects[i].numEdits+' (edits) - '+data.objects[i].importance+' (importance)</div>';
-                h += '<br class="clearfix" />';
-                h += '<hr style="margin: 2px;" />';
-                if (data.objects[i].processType) {
-                    h += '<div class="pull-left" style="font-size: .8em; color: #666;">'+data.objects[i].processType+' (process type)</div>';
+
+                if (i%6==0) {
+                    h += '</div><div class="row-fluid">';
                 }
-                h += '<div class="pull-right" style="font-size: .8em; color: #666;"><span class="epochago">'+data.objects[i].created+'</span> (created) - <span class="epochago">'+data.objects[i].lastEdit+'</span> (last edit) - <span class="epochago">'+data.objects[i].lastView+'</span> (last view)</div>';
-                h += '<br class="clearfix" />';
-                h += '<div class="well well-small" id="objectData'+data.objects[i]._id+'" style="background-color: #fff; margin-left: 10px; white-space: pre-line;">';
+
+                h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="span2" style="">';
+                h += '<h4 style="border-bottom: 1px solid #333;">'+data.objects[i].name+'</h4>';
+
+                h += '<p id="objectData'+data.objects[i]._id+'" style="font-size: .8em; color: #666;"></p>';
+
+/*
+                h += '<div class="pull-right" style="font-size: .8em; color: #666;">';
+                h += data.objects[i].numViews+' (views) - '+data.objects[i].numEdits+' (edits) - '+data.objects[i].importance+' (importance) ';
+                h += '<span class="epochago">'+data.objects[i].created+'</span> (created) - <span class="epochago">'+data.objects[i].lastEdit+'</span> (last edit) - <span class="epochago">'+data.objects[i].lastView+'</span> (last view)';
                 h += '</div>';
-                h += '<hr style="margin: 2px;" />';
-                h += '<div class="" style="font-size: .8em;"><a href=#">Related:</a></div>';
+*/
+
                 h += '</div>';
-                h += '</div>';
+
             }
 
-            $('#objectsListViewObjects').html(h);
+            h += '</div>';
+
+            $('#objectsListView').html(h);
             showView('objectsListView');
 
             // loop for data
@@ -215,6 +225,8 @@ function objectView(id) {
             alert(err.error);
         } else {
 
+            addCrumb(data.objects[0].name, data.objects[0]._id);
+
             $('#objectViewName').html(data.objects[0].name);
             $('#objectViewViews').html(data.objects[0].numViews);
             $('#objectViewEdits').html(data.objects[0].numEdits);
@@ -222,14 +234,13 @@ function objectView(id) {
             $('#objectViewCreated').html(data.objects[0].created);
             $('#objectViewLastEdit').html(data.objects[0].lastEdit);
             $('#objectViewLastView').html(data.objects[0].lastView);
-            $('#objectViewProcessType').html(data.objects[0].processType);
-            $('#objectViewSubmit').html('<button onClick="updateObject(\''+data.objects[0]._id+'\'); return false;" class="btn btn-large btn-primary" type="submit">Update Object</button>');
+            $('#objectViewSubmit').html('<button onClick="updateObject(\''+data.objects[0]._id+'\'); return false;" class="btn btn-large btn-primary" type="submit">Save Changes</button>');
 
             var t = '<ul class="nav nav-tabs">';
 
             // process by default would be set here
-            t += '<li id="objectViewDataTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Raw</a></li>';
-            t += '<li id="objectViewProcessedDataTab" class="active"><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Processed</a></li>';
+            t += '<li id="objectViewDataTab" class="active"><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Edit</a></li>';
+            t += '<li id="objectViewProcessedDataTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">View</a></li>';
 
             t += '</ul>';
 
@@ -249,31 +260,40 @@ function objectView(id) {
 
 function switchRPD(id) {
 
-    var p = false;
-
     if ($('#objectViewDataTab').hasClass('active')) {
 
         // switch to processed
-        p = true;
         $('#objectViewProcessedDataTab').addClass('active');
+        $('#objectViewProcessedData').show();
+
         $('#objectViewDataTab').removeClass('active');
+        $('#objectViewData').hide();
+        $('#objectViewSubmit').hide();
+
+        objectData(id, true, false, function(id, data) {
+            $('#objectViewProcessedData').html(data);
+        });
 
     } else {
 
         // switch to raw
         $('#objectViewDataTab').addClass('active');
+        $('#objectViewData').show();
+        $('#objectViewSubmit').show();
+
         $('#objectViewProcessedDataTab').removeClass('active');
+        $('#objectViewProcessedData').hide();
+
+        objectData(id, false, false, function(id, data) {
+            $('#objectViewData').val(data);
+        });
 
     }
-
-    objectData(id, p, false, function(id, data) {
-        $('#objectViewData').html(data);
-    });
 
 }
 
 function updateObject(id) {
-    apiCall('/object','PUT',{'id':id,'name':$('#objectViewName').html(),'data':$('#objectViewData').html(),'processType':$('#objectViewProcessType').html()}, function (err, data) {
+    apiCall('/object','PUT',{'id':id,'name':$('#objectViewName').html(),'data':$('#objectViewData').val()}, function (err, data) {
         if (err) {
             alert(err.error);
         } else {
@@ -294,24 +314,56 @@ function showView(viewName) {
     for (var i = 0; i < views.length; i++) {
         $('#' + views[i]).hide();
     }
+    if (viewName == 'objectView') {
+        $('#objectViewRel').show();
+    } else if (viewName != 'objectView') {
+        $('#objectViewRel').hide();
+    }
     if (viewName != null) {
-        $('#' + viewName).show('fast');
+        $('#' + viewName).show();
     }
     setTimeout($('.epochago').epochago(), 1000);
 }
 
+var crumbs = [];
+function addCrumb(name, id) {
+
+    if (crumbs.length == 0 || crumbs[crumbs.length-1].id != id) {
+        // this isn't the same as the last crumb, so add it
+
+        crumbs.push({name:name,id:id});
+
+        if (crumbs.length>10) {
+            crumbs.splice(0,1);
+        }
+
+        var h = 'object history: ';
+
+        for (var i=0; i<crumbs.length; i++) {
+            h += '<li><a onClick="objectView(\''+crumbs[i].id+'\'); return false;" href="#">'+crumbs[i].name+'</a>';
+            if (i<crumbs.length-1) {
+                h += '<span class="divider"><i class="icon-arrow-right"></i></span>';
+            }
+            h += '</li>';
+        }
+
+        $('#objectCrumbs').html(h);
+        $('#objectCrumbs').show();
+
+    }
+
+}
+
 // login if cookie exists
 if ($.cookie('username') && $.cookie('password')) {
-    $('#loginUsername').val($.cookie('username'));
-    $('#loginPassword').val($.cookie('password'));
     apiCall('/auth', 'GET', {}, function (err, data) {
         if (!err) {
             doLogin();
         } else {
+            // remove cookies
+            $.removeCookie('username');
+            $.removeCookie('password');
             $('#loginErr').html(err.error);
         }
     });
 }
-
-// show default view
-$('#objectsImportant').click();
