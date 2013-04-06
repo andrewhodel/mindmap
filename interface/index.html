@@ -70,6 +70,25 @@
 
     <div class="container">
         <div class="row-fluid" style="">
+          <div class="alert alert-info" id="newRelation">
+            <div id="rel1" style="height: 80px; width: 120px; overflow: hidden; font-weight: bold; border: 1px solid #333; float: left; padding: 4px; background-color: #eee;">Object #1</div>
+            <div style="float: left; margin-left: 10px; margin-top: 20px;"><i onClick="addRelationWeight(1,1);" class="icon-arrow-up"></i><br /><i onClick="addRelationWeight(1,-1);" class="icon-arrow-down"></i></div>
+            <div id="rel1weight" style="float: left; font-size: 3em; margin-left: 10px; margin-top: 30px;"></div>
+            <div id="rel2" style="height: 80px; width: 120px; overflow: hidden; font-weight: bold; border: 1px solid #333; float: right; padding: 4px; background-color: #eee;">Object #2</div>
+            <div style="float: right; margin-right: 10px; margin-top: 20px;"><i onClick="addRelationWeight(2,1);" class="icon-arrow-up"></i><br /><i onClick="addRelationWeight(2,-1);" class="icon-arrow-down"></i></div>
+            <div id="rel2weight" style="float: right; font-size: 3em; margin-right: 10px; margin-top: 30px;"></div>
+            <div class="clearfix" style="text-align: center; font-weight: bold;">
+            <p style="color: #666; font-size: .8em;">Use the arrows to set each object's relationship value [1-10] to the other.</p>
+            <br />
+            <a href="#" onClick="confirmAddRelations();" class="btn btn-success">Confirm</a> or 
+            <a href="#" onClick="resetAddRelations();" class="btn btn-danger">Forget</a>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row-fluid" style="">
             <ul class="breadcrumb" id="objectCrumbs" style="display: none;">
             </ul>
         </div>
@@ -120,10 +139,9 @@
 
             </div><!--objectView-->
 
-            <div style="display: none;" id="objectViewRel" class="span3">
+            <div style="display: none;" class="span3" id="objectViewRel">
                 <div class="well sidebar-nav">
-                    <ul class="nav nav-list">
-                        <li class="nav-header">RELATED OBJECTS</li>
+                    <ul class="nav nav-list" id="objectViewRelated">
                     </ul>
                 </div>
             </div>

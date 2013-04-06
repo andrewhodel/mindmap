@@ -172,7 +172,7 @@ function objectsListView(sort, reverseOrder) {
             alert(err.error);
         } else {
 
-            var h = '<div class="row-fluid"><p style="font-size: .8em; color: #333;">by '+sort+'</p>';
+            var h = '<div class="row-fluid"><p style="font-size: .8em;" class="label label-info">sorted by '+sort+'</p>';
             // loop for overview
             for (var i=0; i<data.objects.length; i++) {
 
@@ -183,6 +183,9 @@ function objectsListView(sort, reverseOrder) {
                 h += '<div onClick="objectView(\''+data.objects[i]._id+'\'); return false;" id="object'+data.objects[i]._id+'" class="span2" style="height:200px;overflow:hidden;';
 
                 h += '">';
+                if (data.objects[i][sort]) {
+                    h += '<p style="font-size: .8em;" class="label label-info">'+data.objects[i][sort]+'</p>';
+                }
                 h += '<p style="font-weight: bold; border-bottom: 1px solid #333;">'+data.objects[i].name+'</p>';
 
                 h += '<p id="objectData'+data.objects[i]._id+'" style="font-size: .8em; color: #666;"></p>';
@@ -252,6 +255,23 @@ function objectView(id) {
             // get data
             switchRPD(data.objects[0]._id);
 
+            // show related
+            apiCall('/objectRelations', 'GET', {'id':id}, function (erra, dataa) {
+                if (erra) {
+                    alert(erra.error);
+                } else {
+                    var r = '<li class="nav-header">RELATED OBJECTS</li>';
+
+                    for (var i=0; i<dataa.related.length; i++) {
+                        r += '<li>'+dataa.related[i].dId+'</li>';
+                    }
+
+                    r += '<li><a href="#" onClick="addRelation(\''+data.objects[0].name+'\',\''+data.objects[0]._id+'\');">Add to New Relation</a></li>';
+
+                    $('#objectViewRelated').html(r);
+                }
+            });
+
             showView('objectView');
 
         }
@@ -295,6 +315,7 @@ function switchRPD(id) {
 }
 
 function updateObject(id) {
+
     apiCall('/object','PUT',{'id':id,'name':$('#objectViewName').html(),'data':$('#objectViewData').val()}, function (err, data) {
         if (err) {
             alert(err.error);
@@ -303,6 +324,7 @@ function updateObject(id) {
             objectView(id);
         }
     });
+
 }
 
 var objectData = function(id, processed, blurb, cb) {
@@ -325,6 +347,74 @@ function showView(viewName) {
         $('#' + viewName).show();
     }
     setTimeout($('.epochago').epochago(), 1000);
+}
+
+var relationOne = [];
+var relationTwo = [];
+resetAddRelations();
+
+function addRelation(name, id) {
+    if (relationOne[0] == undefined) {
+        // this is the first
+        relationOne[0] = id;
+        relationOne[1] = name;
+        $('#rel1').html(name);
+        addRelationWeight(1,0);
+    } else {
+        // this is the second
+        relationTwo[0] = id;
+        relationTwo[1] = name;
+        $('#rel2').html(name);
+        addRelationWeight(2,0);
+    }
+    $('#newRelation').show();
+}
+
+function addRelationWeight(ot, inc) {
+    if (ot == 1) {
+        if (relationOne[2]+inc > 10 || relationOne[2]+inc < 1) {
+            alert('must be between 1 and 10');
+        } else {
+            relationOne[2] += inc;
+            $('#rel1weight').html(relationOne[2]);
+        }
+    }
+    if (ot == 2) {
+        if (relationTwo[2]+inc > 10 || relationTwo[2]+inc < 1) {
+            alert('must be between 1 and 10');
+        } else {
+            relationTwo[2] += inc;
+            $('#rel2weight').html(relationTwo[2]);
+        }
+    }
+}
+
+function confirmAddRelations() {
+
+    // add first object relation
+    apiCall('/objectRelation','POST',{'id':relationOne[0],'importance':relationOne[2],'dId':relationTwo[0],'dImportance':relationTwo[2]}, function (err, data) {
+        if (err) {
+            alert(err.error);
+        } else {
+            resetAddRelations();
+            alert('relationship added');
+        }
+    });
+
+}
+
+function resetAddRelations() {
+    relationOne[0] = undefined;
+    relationTwo[0] = undefined;
+    relationOne[1] = undefined;
+    relationTwo[1] = undefined;
+    relationOne[2] = 1;
+    relationTwo[2] = 1;
+    $('#rel1').html('Object #1');
+    $('#rel2').html('Object #2');
+    $('#rel1weight').html(1);
+    $('#rel2weight').html(1);
+    $('#newRelation').hide();
 }
 
 var crumbs = [];
