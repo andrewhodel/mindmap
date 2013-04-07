@@ -3,8 +3,11 @@ var journey = require('journey');
 var mongodb = require('mongodb');
 var async = require('async');
 var bcrypt = require('bcrypt');
+var url = require('url');
 var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
+var multiparty = require('multiparty');
+var util = require('util');
 var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {'auto_reconnect':true}), {journal:true});
 
 // Array.hasValue
@@ -797,18 +800,49 @@ require('http').createServer(function (request, response) {
 
     } else {
 
-    var body = "";
-    request.addListener('data', function (chunk) { body += chunk });
-    request.addListener('end', function () {
-        // Dispatch the request to the router
-        router.handle(request, body, function (result) {
-            result.headers['Access-Control-Allow-Origin'] = '*';
-            result.headers['Access-Control-Allow-Methods'] = '*';
-            response.writeHead(result.status, result.headers);
-            response.end(result.body);
-            console.log('###### '+request.method+' '+request.url+" ######\n"+result.body);
+    // break out params
+    var up = url.parse(request.url, true);
+
+    // check if this is a file upload
+    if (up.pathname === '/upload' && request.method === 'POST') {
+
+        console.log(request);
+
+        // parse a file upload
+        var form = new multiparty.Form();
+
+        form.on('error', function(err) {
+
+            console.log(err);
+            response.writeHead(400, {'content-type': 'text/plain'});
+            response.end("invalid request: " + err);
+
         });
-    });
+
+        form.parse(request, function(err, fields, files) {
+            response.writeHead(200, {'content-type': 'text/plain'});
+            response.write('received upload:\n\n');
+            response.end(util.inspect({fields: fields, files: files}));
+        });
+
+    } else {
+
+        // this is an API request
+
+        var body = "";
+        request.addListener('data', function (chunk) { body += chunk });
+        request.addListener('end', function () {
+            // Dispatch the request to the router
+            router.handle(request, body, function (result) {
+                result.headers['Access-Control-Allow-Origin'] = '*';
+                result.headers['Access-Control-Allow-Methods'] = '*';
+                response.writeHead(result.status, result.headers);
+                response.end(result.body);
+                console.log('###### '+request.method+' '+request.url+" ######\n"+result.body);
+            });
+        });
+
+    }
 
     }
 

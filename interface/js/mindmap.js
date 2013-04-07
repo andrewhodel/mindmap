@@ -244,8 +244,9 @@ function objectView(id) {
             var t = '<ul class="nav nav-tabs">';
 
             // process by default would be set here
-            t += '<li id="objectViewDataTab" class="active"><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">Edit</a></li>';
-            t += '<li id="objectViewProcessedDataTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\'); return false;" href="#">View</a></li>';
+            t += '<li id="objectViewDataTab" class="active"><a onClick="switchRPD(\''+data.objects[0]._id+'\',\'d\'); return false;" href="#">Edit</a></li>';
+            t += '<li id="objectViewProcessedDataTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\',\'p\'); return false;" href="#">View</a></li>';
+            t += '<li id="objectViewFilesTab" class=""><a onClick="switchRPD(\''+data.objects[0]._id+'\',\'f\'); return false;" href="#">Files</a></li>';
 
             t += '</ul>';
 
@@ -253,7 +254,7 @@ function objectView(id) {
             $('#objectViewData').html('');
 
             // get data
-            switchRPD(data.objects[0]._id);
+            switchRPD(data.objects[0]._id, 'p');
 
             // show related
             apiCall('/objectRelations', 'GET', {'id':id}, function (erra, dataa) {
@@ -280,35 +281,65 @@ function objectView(id) {
 
 }
 
-function switchRPD(id) {
+function switchRPD(id, tabname) {
 
-    if ($('#objectViewDataTab').hasClass('active')) {
+    // tabname
+    // d = Data
+    // p = ProcessedData
+    // f = Files
 
-        // switch to processed
+    if (tabname == 'p') {
+
+        // show processed
         $('#objectViewProcessedDataTab').addClass('active');
         $('#objectViewProcessedData').show();
 
+        // hide raw
         $('#objectViewDataTab').removeClass('active');
         $('#objectViewData').hide();
         $('#objectViewSubmit').hide();
+
+        // hide files
+        $('#objectViewFilesTab').removeClass('active');
+        $('#objectViewFiles').hide();
 
         objectData(id, true, false, function(id, data) {
             $('#objectViewProcessedData').html(data);
         });
 
-    } else {
+    } else if (tabname == 'd') {
 
-        // switch to raw
+        // show raw
         $('#objectViewDataTab').addClass('active');
         $('#objectViewData').show();
         $('#objectViewSubmit').show();
 
+        // hide processed
         $('#objectViewProcessedDataTab').removeClass('active');
         $('#objectViewProcessedData').hide();
+
+        // hide files
+        $('#objectViewFilesTab').removeClass('active');
+        $('#objectViewFiles').hide();
 
         objectData(id, false, false, function(id, data) {
             $('#objectViewData').val(data);
         });
+
+    } else if (tabname == 'f') {
+
+        // show files
+        $('#objectViewFiles').addClass('active');
+        $('#objectViewFiles').show();
+
+        // hide processed
+        $('#objectViewProcessedDataTab').removeClass('active');
+        $('#objectViewProcessedData').hide();
+
+        // hide data
+        $('#objectViewDataTab').removeClass('active');
+        $('#objectViewData').hide();
+        $('#objectViewSubmit').hide();
 
     }
 
