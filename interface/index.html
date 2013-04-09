@@ -133,18 +133,12 @@
                     <div id="objectViewProcessedData"></div>
                     <div id="objectViewFiles">
 
-<h3>Choose file(s)</h3>
-<p>
-    <input id="files-upload" type="file" multiple>
-</p>
-<p id="drop-area">
-    <span class="drop-instructions">or drag and drop files here</span>
-    <span class="drop-over">Drop files here!</span>
-</p>
 
-<ul id="file-list">
-    <li class="no-items">(no files uploaded yet)</li>
-</ul>
+        <form method="post" enctype="multipart/form-data"  action="/upload">
+            <input type="file" name="files" id="files" multiple />
+            <button type="submit" id="btn">Upload Files!</button>
+        </form>
+        <div id="response"></div>
 
                     </div>
                 </div>

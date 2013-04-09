@@ -3,6 +3,7 @@ var journey = require('journey');
 var mongodb = require('mongodb');
 var async = require('async');
 var bcrypt = require('bcrypt');
+var fs = require('fs');
 var url = require('url');
 var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
@@ -803,13 +804,13 @@ require('http').createServer(function (request, response) {
     // break out params
     var up = url.parse(request.url, true);
 
+    console.log(up.pathname);
+
     // check if this is a file upload
     if (up.pathname === '/upload' && request.method === 'POST') {
 
-        console.log(request);
-
         // parse a file upload
-        var form = new multiparty.Form();
+        var form = new multiparty.Form({autoFields:true,autoFiles:true});
 
         form.on('error', function(err) {
 
@@ -819,10 +820,40 @@ require('http').createServer(function (request, response) {
 
         });
 
+        form.on('close', function() {
+            
+        });
+
+        form.on('file', function(name, file) {
+            console.log(file);
+        });
+
         form.parse(request, function(err, fields, files) {
-            response.writeHead(200, {'content-type': 'text/plain'});
-            response.write('received upload:\n\n');
-            response.end(util.inspect({fields: fields, files: files}));
+
+            console.log('---------------NEW UPLOAD REQUEST---------------');
+            console.log('username '+fields.username);
+            console.log('password '+fields.password);
+            console.log('FILES:');
+            console.log(files);
+
+/**
+            if (fields.username == conf.username && bcrypt.compareSync(fields.password, conf.password)) {
+
+                response.setHeader("Access-Control-Allow-Origin", "*");
+                response.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
+                response.writeHead(200, {'content-type': 'text/plain'});
+                response.end(util.inspect({fields: fields, files: files}));
+
+            } else {
+
+                response.setHeader("Access-Control-Allow-Origin", "*");
+                response.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
+                response.writeHead(401, {'content-type': 'text/plain'});
+                response.end('invalid login');
+
+            }
+**/
+
         });
 
     } else {
@@ -836,6 +867,7 @@ require('http').createServer(function (request, response) {
             router.handle(request, body, function (result) {
                 result.headers['Access-Control-Allow-Origin'] = '*';
                 result.headers['Access-Control-Allow-Methods'] = '*';
+                result.headers['Access-Control-Allow-Headers'] = 'X-Requested-With';
                 response.writeHead(result.status, result.headers);
                 response.end(result.body);
                 console.log('###### '+request.method+' '+request.url+" ######\n"+result.body);
