@@ -49,7 +49,7 @@ function doLogin() {
     $('#mainNav').show('slow');
 
     // show events
-    showEvents(),
+    showVolumes(),
 
     // start loopData and timer every 5 minutes
     loopData();
@@ -243,24 +243,23 @@ function eventObj(obj) {
     h += '<div class="eventEdit" id="eventEdit' + obj._id + '">';
     h += '<textarea style="width: 99%; height: 500px;" id="eventEditText' + obj._id + '">';
     h += '</textarea><br />';
-    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="saveEdit(\'' + obj._id + '\');">Save</button> ';
-    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="cancelEdit(\'' + obj._id + '\');">Cancel</button>';
+    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="saveEdit(\'' + obj._id + '\'); return false;">Save</button> ';
+    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="cancelEdit(\'' + obj._id + '\'); return false;">Cancel</button>';
     h += '<br class="clearfix" style="margin-bottom: 10px;" /></div>';
 
     h += '<div class="eventVolumes">';
     if (obj.volumes != undefined) {
         for (var i = 0; i < obj.volumes.length; i++) {
-            //h += '<span class="pull-left" href="#" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\');">' + obj.volumes[i] + '</span>';
-            h += '<div><a href="#" onClick="showEvents(\'' + obj.volumes[i] + '\')">' + obj.volumes[i] + '</a> <a href="#" style="font-size: .8em;" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\');"> (X)</a></div>';
+            h += '<div><a href="#" onClick="showEvents(\'' + obj.volumes[i] + '\'); return false;">' + obj.volumes[i] + '</a> <a href="#" style="font-size: .8em;" onClick="volumeConnections(\'' + obj.volumes[i] + '\'); return false;">(C)</a> <a href="#" style="font-size: .8em;" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\'); return false;">(X)</a></div>';
         }
     }
     h += '</div>';
     
-    h += '<button style="margin-left: 6px; float: right;" class="btn btn-danger" type="button" onClick="deleteEvent(\'' + obj._id + '\');">delete</button>';
-    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="editEvent(\'' + obj._id + '\');">edit</button>';
+    h += '<button style="margin-left: 6px; float: right;" class="btn btn-danger" type="button" onClick="deleteEvent(\'' + obj._id + '\'); return false;">delete</button>';
+    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="editEvent(\'' + obj._id + '\'); return false;">edit</button>';
     h += '<div class="input-append eventAddVolume clearfix">';
     h += '<input placeholder="add volume" class="span2" id="addVolumeText' + obj._id + '" type="text">';
-    h += '<button class="btn" type="button" onClick="addVolume(\'' + obj._id + '\');">+</button>';
+    h += '<button class="btn" type="button" onClick="addVolume(\'' + obj._id + '\'); return false;">+</button>';
     h += '</div>';
     h += '<br class="clearfix" style="margin-bottom: 10px;" /></div>';
 
@@ -270,7 +269,7 @@ function eventObj(obj) {
 
 // CLICK HANDLERS
 
-$('#mindmapIcon').on("click", function (event) {
+$('#allEvents').on("click", function (event) {
     event.preventDefault();
     showEvents();
 });
@@ -309,8 +308,7 @@ $('#logoutLink').on("click", function (event) {
 
 });
 
-$('#allVolumes').on("click", function (event) {
-    event.preventDefault();
+function showVolumes() {
     $("#mainWindow").html('');
 
     apiCall('/volumes', 'GET', {
@@ -319,7 +317,7 @@ $('#allVolumes').on("click", function (event) {
 	shuffleArray(data.volumes);
         for (var i = 0; i < data.volumes.length; i++) {
 		console.log(data.volumes[i]);
-		$("#mainWindow").append('<a href="#" rel="'+data.volumes[i].count+'" onClick="showEvents(\''+data.volumes[i].name+'\');">'+data.volumes[i].name+'</a> ');
+		$("#mainWindow").append('<a href="#" rel="'+data.volumes[i].count+'" onClick="showEvents(\''+data.volumes[i].name+'\'); return false;">'+data.volumes[i].name+'</a> ');
         }
 	$.fn.tagcloud.defaults = {
   size: {start: 18, end: 46, unit: 'pt'},
@@ -328,7 +326,7 @@ $('#allVolumes').on("click", function (event) {
 	$("#mainWindow a").tagcloud();
     });
 
-});
+}
 
 function shuffleArray(array) {
     for (var i = array.length - 1; i > 0; i--) {
@@ -348,7 +346,7 @@ $('#newEventLink').on("click", function (event) {
     h += '<input id="newEventName" type="text" placeholder="Event Name">';
     h += '<span class="help-block">Event data.</span>';
     h += '<textarea id="newEventData" style="width: 95%; height: 500px;"></textarea>';
-    h += '<button type="submit" class="btn" onClick="newEventSubmit();">Submit</button>';
+    h += '<button type="submit" class="btn" onClick="newEventSubmit(); return false;">Submit</button>';
     h += '</fieldset>';
     h += '</form>';
     $("#mainWindow").html(h);
@@ -456,6 +454,26 @@ function delVolume(id, v) {
         } else {
             // update event
             eventUpdate(id);
+        }
+
+    });
+
+}
+
+function volumeConnections(v) {
+    apiCall('/volumes', 'GET', {
+        'single': v
+    }, function (err, data) {
+
+        if (err) {
+            alert(err.error);
+        } else {
+		var s = '';
+		for (var key in data.volumes[0].connections) {
+			var obj = data.volumes[0].connections[key];
+			s += key+' ';
+		}
+		alert(s);
         }
 
     });

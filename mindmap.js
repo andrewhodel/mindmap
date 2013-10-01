@@ -156,6 +156,7 @@ RESPONSE CODES
 500 - Error
 	returns error
 */
+
 router.get('/events').bind(function(req, res, params) {
     if (auth(params.username, params.password, res)) {
 
@@ -345,7 +346,7 @@ router.post('/eventVolume').bind(function(req, res, params) {
 						if (exists) {
 							callback('volume already exists for event', '');
 						} else {
-                                    			callback(null, '');
+                                    			callback(null, docs);
 						}
 					} else {
 						// event has no volumes, succeed
@@ -367,14 +368,16 @@ router.post('/eventVolume').bind(function(req, res, params) {
                                     'volumes': params.v
                                 }
                             }, {
-                                'safe': true
+                                'new': true
                             }, function(err, docs) {
+
                                 callback(err, '');
                             });
                     });
                 },
                 function(callback) {
                     // add 1 to volume and lastModified
+
                     db.collection('v', function(err, collection) {
                         collection.update({
                                 'name': params.v
@@ -386,15 +389,53 @@ router.post('/eventVolume').bind(function(req, res, params) {
                                     'ts': Math.round((new Date()).getTime() / 1000)
                                 }
                             }, {
-                                'safe': true,
                                 'upsert': true
                             }, function(err, docs) {
                                 callback(err, '');
                             });
                     });
+
                 },
 
             ], function(err, results) {
+
+		//console.log(results);
+
+				for (var i=0; i<results[2][0].volumes.length; i++) {
+
+					if (results[2][0].volumes[i] != params.v) {
+					// for each other volume on this event we must add 1 to the connection for params.v
+                    db.collection('v', function(err, collection) {
+			var variable = 'connections.'+results[2][0].volumes[i];
+			var action = {};
+			action[variable] = 1;
+                        collection.update({
+                                'name': params.v
+                            }, {
+                                '$inc': action
+                            }, {
+                                'safe': true
+                            }, function(err, docs) {
+				console.log(err);
+                            });
+                    });
+					
+					// as well as add 1 to params.v for each other volume
+                    db.collection('v', function(err, collection) {
+			var variable = 'connections.'+params.v;
+			var action = {};
+			action[variable] = 1;
+                        collection.update({
+                                'name': results[2][0].volumes[i]
+                            }, {
+                                '$inc': action
+                            }, {
+                            }, function(err, docs) {
+                            });
+                    });
+					}
+
+				}
 
                 if (err) {
                     res.send(500, {}, {
@@ -451,7 +492,7 @@ router.del('/eventVolume').bind(function(req, res, params) {
                                 '_id': new mongodb.ObjectID(params.id)
                             }).toArray(function(err, docs) {
                                 if (docs.length > 0) {
-                                    callback(null, '');
+                                    callback(null, docs);
                                 } else {
                                     callback('event not found with _id ' + params.id, '');
                                 }
@@ -461,6 +502,7 @@ router.del('/eventVolume').bind(function(req, res, params) {
                 function(callback) {
                     // remove event from volume
                     db.collection('e', function(err, collection) {
+
                         collection.update({
                                 '_id': new mongodb.ObjectID(params.id)
                             }, {
@@ -472,6 +514,7 @@ router.del('/eventVolume').bind(function(req, res, params) {
                             }, function(err, docs) {
                                 callback(err, '');
                             });
+
                     });
                 },
                 function(callback) {
@@ -499,6 +542,44 @@ router.del('/eventVolume').bind(function(req, res, params) {
 
             ], function(err, results) {
 
+		//console.log(results);
+
+				for (var i=0; i<results[2][0].volumes.length; i++) {
+
+					if (results[2][0].volumes[i] != params.v) {
+					// for each other volume on this event we must subtract 1 to the connection for params.v
+                    db.collection('v', function(err, collection) {
+			var variable = 'connections.'+results[2][0].volumes[i];
+			var action = {};
+			action[variable] = -1;
+                        collection.update({
+                                'name': params.v
+                            }, {
+                                '$inc': action
+                            }, {
+                                'safe': true
+                            }, function(err, docs) {
+				console.log(err);
+                            });
+                    });
+					
+					// as well as subtract 1 to params.v for each other volume
+                    db.collection('v', function(err, collection) {
+			var variable = 'connections.'+params.v;
+			var action = {};
+			action[variable] = -1;
+                        collection.update({
+                                'name': results[2][0].volumes[i]
+                            }, {
+                                '$inc': action
+                            }, {
+                            }, function(err, docs) {
+                            });
+                    });
+					}
+
+				}
+
                 if (err) {
                     res.send(500, {}, {
                             'error': err
@@ -520,6 +601,7 @@ GET /volumes - get all volumes
 AUTH REQUIRED
 
 REQUEST PARAMS
+single - name of single volume to return if you only want 1
 
 RESPONSE CODES
 200 - Valid Object
@@ -534,10 +616,17 @@ router.get('/volumes').bind(function(req, res, params) {
         async.series([
 
                 function(callback) {
-                    // get related objects and importance
+                    // get volumes
+
+        var f = {};
+
+            // first figure out volumes
+            if (params.single != undefined) {
+		f.name = params.single;
+            }
+
                     db.collection('v', function(err, collection) {
-                        collection.find({
-                            }).sort({
+                        collection.find(f).sort({
                                 'count': -1
                             }).toArray(function(err, docs) {
                                 // place the data in results[2]
@@ -1031,6 +1120,81 @@ db.open(function(err, db) {
                 }
             });
 
+        // boot time volume connections/relations
+
+function getVolumesPerEvent(volume, cb) {
+
+	var vpt = {};
+
+	// for every volume, get all it's events
+	db.collection('e', function(err, collection) {
+		collection.find({'volumes':volume}).toArray(function(err, docs1) {
+			vpt[volume] = {};
+			for (var ii=0; ii<docs1.length; ii++) {
+				// loop for each volume in event
+				if (docs1[ii].volumes) {
+					for (var iii=0; iii<docs1[ii].volumes.length; iii++) {
+						// dont count yourself
+						if (docs1[ii].volumes[iii] != volume) {
+							if (vpt[volume][docs1[ii].volumes[iii]] > 0) {
+								vpt[volume][docs1[ii].volumes[iii]]++;
+							} else {
+								vpt[volume][docs1[ii].volumes[iii]] = 1;
+							}
+						}
+					}
+				}
+			}
+			cb(err, vpt);
+		});
+	});
+
+}
+
+async.waterfall([
+    function(callback){
+
+        db.collection('v', function(err, collection) {
+            collection.find({}).toArray(function(err, docs) {
+		callback(null, docs);
+		});
+	});
+
+    },
+    function(volumes, callback){
+	var v = [];
+	for (var i=0; i<volumes.length; i++) {
+		v.push(volumes[i].name);
+	}
+	async.map(v, getVolumesPerEvent, function(err, results) {
+        	callback(null, results);
+	});
+    }
+], function (err, result) {
+
+	// put connections back in for each volume
+	for (var i=0; i<result.length; i++) {
+
+		//console.log(Object.keys(result[i])[0]);
+		//console.log(result[i]);
+
+		db.collection('v', function(err, collection) {
+
+                        collection.update({
+                                'name': Object.keys(result[i])[0]
+                            }, {
+                                '$set': {
+                                    'connections': result[i][Object.keys(result[i])[0]]
+                                }
+                            }, {
+                                'safe': true
+                            }, function(err, docs) {
+                            });
+
+		});
+	}
+
+});
 
         // get config settings from db
         db.collection('c', function(err, collection) {
