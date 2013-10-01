@@ -348,15 +348,14 @@ $('#newEventLink').on("click", function (event) {
     h += '<input id="newEventName" type="text" placeholder="Event Name">';
     h += '<span class="help-block">Event data.</span>';
     h += '<textarea id="newEventData" style="width: 95%; height: 500px;"></textarea>';
-    h += '<button type="submit" class="btn" id="newEventSubmit">Submit</button>';
+    h += '<button type="submit" class="btn" onClick="newEventSubmit();">Submit</button>';
     h += '</fieldset>';
     h += '</form>';
     $("#mainWindow").html(h);
 
 });
 
-$('#newEventSubmit').on("click", function (event) {
-    event.preventDefault();
+function newEventSubmit() {
 
     apiCall('/event', 'POST', {
         'title': $('#newEventName').val(),
@@ -374,7 +373,7 @@ $('#newEventSubmit').on("click", function (event) {
 
     });
 
-});
+}
 
 function editEvent(id) {
 	// hide eventText
