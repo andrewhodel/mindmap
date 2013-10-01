@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mindmap</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="https://github.com/andrewhodel/mindmap">
+<meta name="author" content="zip" >
+<!-- CSS -->
+<link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="css/mindmap.css" rel="stylesheet">
+<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+<!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+<!-- Fav and touch icons -->
+<link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+<link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+<link rel="shortcut icon" href="../assets/ico/favicon.png">
+</head>
+<body>
+<div id="loginHolder">
+	<div id="loginc">
+		<form class="form-signin">
+			<h2 class="form-signin-heading">Please sign in</h2>
+			<input id="loginUsername" type="text" class="input-block-level" placeholder="Username">
+			<input id="loginPassword" type="password" class="input-block-level" placeholder="Password">
+			<p id="loginErr" class="alert">
+			</p>
+			<button id="loginButton" class="btn btn-large btn-primary" type="submit">Sign in</button>
+		</form>
+	</div>
+</div>
+<div id="mainNav" class="navbar navbar-inverse navbar-fixed-top" style="display: none;">
+	<div class="navbar-inner">
+		<div class="container-fluid">
+			<button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			</button>
+			<a class="brand" href="#" id="mindmapIcon">mindmap</a>
+			<div class="nav-collapse collapse">
+				<p class="navbar-text pull-right">
+					<a href="#" class="navbar-link" id="logoutLink">logout</a>
+				</p>
+				<ul class="nav">
+					<li><a href="#" id="newEventLink">new event</a></li>
+					<li><a href="#" id="allVolumes">all volumes</a></li>
+				</ul>
+			</div>
+			<!--/.nav-collapse -->
+		</div>
+	</div>
+</div>
+<!-- Begin page content -->
+<div style="height: 40px;">
+</div>
+<div class="container">
+	<div id="mainWindow">
+	</div>
+	<div id="footer">
+		<div class="container">
+			<p class="muted credit">
+			</p>
+		</div>
+	</div>
+</div>
+<!-- Le javascript
+    ================================================== -->
+<!-- Placed at the end of the document so the pages load faster -->
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="js/jquery.cookie.js"></script>
+<script src="js/jquery.tagcloud.js"></script>
+<script src="js/jquery.inview.min.js"></script>
+<script src="js/bootstrap.js"></script>
+<script src="js/mindmap.js"></script>
+</body>
+</html>

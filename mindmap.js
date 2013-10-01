@@ -9,12 +9,21 @@ var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
 var multiparty = require('multiparty');
 var util = require('util');
-var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {'auto_reconnect':true}), {journal:true});
+var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {
+            'auto_reconnect': true
+        }), {
+        journal: true
+    });
+
+// global conf
+var conf = {};
 
 // Array.hasValue
 Array.prototype.hasValue = function(value) {
     var i;
-    for (i=0; i<this.length; i++) { if (this[i] === value) return true; }
+    for (i = 0; i < this.length; i++) {
+        if (this[i] === value) return true;
+    }
     return false;
 }
 
@@ -25,13 +34,13 @@ function isValidMongoId(id) {
     }
 
     id = id.toLowerCase();
-    var validChar='0123456789abcdef';
+    var validChar = '0123456789abcdef';
     var v = true;
     if (id.length != 24) {
         v = false;
     }
-    for(idx=0;idx<id.length;idx++){
-        if(validChar.indexOf(id.charAt(idx))<0){
+    for (idx = 0; idx < id.length; idx++) {
+        if (validChar.indexOf(id.charAt(idx)) < 0) {
             v = false;
         }
     }
@@ -41,22 +50,22 @@ function isValidMongoId(id) {
 
 function checkParams(params, validator, cb) {
 
-        var err = false;
-        var errorString = '';
+    var err = false;
+    var errorString = '';
 
-        for (i=0; i<validator.length; i++) {
-            if (params[validator[i]] == undefined || params[validator[i]] == null || params[validator[i]] == '') {
-                // value doesn't exist
-                err = true;
-                errorString += validator[i]+' ';
-            }
+    for (i = 0; i < validator.length; i++) {
+        if (params[validator[i]] == undefined || params[validator[i]] == null || params[validator[i]] == '') {
+            // value doesn't exist
+            err = true;
+            errorString += validator[i] + ' ';
         }
+    }
 
-        if (err == true) {
-            cb('the following parameters must have a value: '+errorString);
-        } else {
-            cb(null);
-        }
+    if (err == true) {
+        cb('the following parameters must have a value: ' + errorString);
+    } else {
+        cb(null);
+    }
 
 }
 
@@ -64,20 +73,20 @@ function checkParams(params, validator, cb) {
 
 function editParams(params, validator, cb) {
 
-        var e = {};
+    var e = {};
 
-        for (i=0; i<validator.length; i++) {
-            if (params[validator[i]] != undefined && params[validator[i]] != '') {
-                // add item to set
-                e[validator[i]] = params[validator[i]];
-            }
+    for (i = 0; i < validator.length; i++) {
+        if (params[validator[i]] != undefined && params[validator[i]] != '') {
+            // add item to set
+            e[validator[i]] = params[validator[i]];
         }
+    }
 
-        console.log('params to edit');
-        console.log(e);
+    console.log('params to edit');
+    console.log(e);
 
-        // return params to edit
-        cb(e);
+    // return params to edit
+    cb(e);
 
 }
 
@@ -99,7 +108,9 @@ password
 
 Responds with 401 if auth fail
 */
+
 function auth(username, password, res) {
+
     if (username == conf.username && bcrypt.compareSync(password, conf.password)) {
         return true;
     } else {
@@ -120,30 +131,33 @@ RESPONSE CODES
 200 - Valid Zone
 	returns {success:1}
 */
-router.get('/auth').bind(function (req, res, params) {
-	if (auth(params.username, params.password, res)) {
-        res.send({'success':1});
-	}
+router.get('/auth').bind(function(req, res, params) {
+    if (auth(params.username, params.password, res)) {
+        res.send({
+                'success': 1
+            });
+    }
 });
 
 /*
-GET /objectsList - return a sorted list of objects
+GET /events - returns events
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-id - STR id of a single object to return
-sort - STR name of field to sort by ['importance','created','lastView','lastEdit','numEdits','numViews']
+id - STR id of a single event to return
+sort - STR name of field to sort by ['created','lastView','lastEdit','numEdits','numViews']
+volumes - restrict to comma separated list of volumes
 reverseOrder - BOOLEAN true for <
 
 RESPONSE CODES
 200 - Valid
-	returns json document with all objects
+	returns json document with all events
 500 - Error
 	returns error
 */
-router.get('/objectsList').bind(function (req, res, params) {
-	if (auth(params.username, params.password, res)) {
+router.get('/events').bind(function(req, res, params) {
+    if (auth(params.username, params.password, res)) {
 
         var so = {};
         var f = {};
@@ -152,9 +166,17 @@ router.get('/objectsList').bind(function (req, res, params) {
             f._id = new mongodb.ObjectID(params.id);
         } else {
 
+            // first figure out volumes
+            if (params.volumes != undefined) {
+                var l = params.volumes.split(',');
+                for (var i = 0; i < l.length; i++) {
+                    f['volumes'] = l[i];
+                }
+            }
+
             // build sort object
-            var validSorts = ['id','importance','created','lastView','lastEdit','numEdits','numViews'];
-            for (var i=0; i<validSorts.length; i++) {
+            var validSorts = ['id', 'created', 'lastView', 'lastEdit', 'numEdits', 'numViews'];
+            for (var i = 0; i < validSorts.length; i++) {
                 if (params.sort == validSorts[i]) {
                     if (params.reverseOrder == true) {
                         so[validSorts[i]] = 1;
@@ -166,12 +188,17 @@ router.get('/objectsList').bind(function (req, res, params) {
 
         }
 
-        db.collection('o', function (err, collection) {
+        db.collection('e', function(err, collection) {
             collection.find(f).sort(so).toArray(function(err, docs) {
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    res.send({'success':1, 'objects':docs});
+                    res.send({
+                            'success': 1,
+                            'events': docs
+                        });
                 }
             });
         });
@@ -180,356 +207,319 @@ router.get('/objectsList').bind(function (req, res, params) {
 });
 
 /*
-GET /objectsMap - return object map
+GET /eventData - get an event's data
 
 AUTH REQUIRED
 
 REQUEST PARAMS
+id* - STR id of event
+html - BOOLEAN true for parsed output html
+
+RESPONSE CODES
+200 - Valid Object
+	returns json document eventData
+500 - Error
+	returns error
+*/
+router.get('/eventData').bind(function(req, res, params) {
+
+    if (auth(params.username, params.password, res)) {
+
+        async.series([
+
+                function(callback) {
+                    checkParams(params, ['id'], function(err) {
+                        callback(err, '');
+                    });
+                },
+                function(callback) {
+                    if (isValidMongoId(params.id)) {
+                        callback(null, '');
+                    } else {
+                        callback('invalid id', '');
+                    }
+                },
+                function(callback) {
+			// updating lastView
+                        db.collection('e', function(err, collection) {
+                            collection.update({
+                                    _id: new mongodb.ObjectID(params.id)
+                                }, {
+                                    '$inc': {
+                                        numViews: 1
+                                    },
+					'$set': {lastView: Math.round((new Date()).getTime() / 1000)}
+                                }, function(err) {
+
+                            callback(null, '');
+
+			});
+                        });
+                }
+
+            ], function(err, results) {
+
+                if (err) {
+                    res.send(500, {}, {
+                            'error': err
+                        });
+                } else {
+
+			// get data
+        		db.collection('ed', function(err, collection) {
+            			collection.find({eId:new mongodb.ObjectID(params.id)}).toArray(function(err, docs) {
+
+			ht = docs[0];
+
+                    if (params.html == 'true') {
+                            //ht.d = md(ht.d, true);
+                            ht.d = urlize(ht.d);
+                            ht.d = ht.d.replace(/\n/g, '<br />');
+
+                        }
+
+
+                    res.send({
+                            'success': 1,
+                            'eventData': ht
+                        });
+		});
+		});
+
+                }
+            });
+
+    }
+
+});
+
+/*
+POST /eventVolume - add an event to a volume
+
+AUTH REQUIRED
+
+REQUEST PARAMS
+id* - STR id of event
+v* - STR volume name
 
 RESPONSE CODES
 200 - Valid
-	returns json document with all objects
+	returns success
 500 - Error
 	returns error
 */
-router.get('/objectsMap').bind(function (req, res, params) {
-	if (auth(params.username, params.password, res)) {
+router.post('/eventVolume').bind(function(req, res, params) {
 
-        db.collection('o', function (err, collection) {
-            collection.find({}).toArray(function(err, docs) {
+    if (auth(params.username, params.password, res)) {
+
+        async.series([
+
+                function(callback) {
+                    checkParams(params, ['id', 'v'], function(err) {
+                        callback(err, '');
+                    });
+                },
+                function(callback) {
+                    if (isValidMongoId(params.id)) {
+                        callback(null, '');
+                    } else {
+                        callback('invalid id', '');
+                    }
+                },
+                function(callback) {
+                    // make sure event exists
+                    db.collection('e', function(err, collection) {
+                        collection.find({
+                                '_id': new mongodb.ObjectID(params.id)
+                            }).toArray(function(err, docs) {
+                                if (docs.length > 0) {
+					if (docs[0].volumes) {
+						var exists = false;
+						// check that this volume is not there
+						for (var i=0; i<docs[0].volumes.length; i++) {
+							if (docs[0].volumes[i] == params.v) {
+								// exists
+								exists = true;
+							}
+						}
+						if (exists) {
+							callback('volume already exists for event', '');
+						} else {
+                                    			callback(null, '');
+						}
+					} else {
+						// event has no volumes, succeed
+                                    callback(null, '');
+					}
+                                } else {
+                                    callback('event not found with _id ' + params.id, '');
+                                }
+                            });
+                    });
+                },
+                function(callback) {
+                    // add event to volume
+                    db.collection('e', function(err, collection) {
+                        collection.update({
+                                '_id': new mongodb.ObjectID(params.id)
+                            }, {
+                                '$push': {
+                                    'volumes': params.v
+                                }
+                            }, {
+                                'safe': true
+                            }, function(err, docs) {
+                                callback(err, '');
+                            });
+                    });
+                },
+                function(callback) {
+                    // add 1 to volume and lastModified
+                    db.collection('v', function(err, collection) {
+                        collection.update({
+                                'name': params.v
+                            }, {
+                                '$inc': {
+                                    'count': 1
+                                },
+                                '$set': {
+                                    'ts': Math.round((new Date()).getTime() / 1000)
+                                }
+                            }, {
+                                'safe': true,
+                                'upsert': true
+                            }, function(err, docs) {
+                                callback(err, '');
+                            });
+                    });
+                },
+
+            ], function(err, results) {
+
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    res.send({'success':1, 'objects':docs});
-
+                    res.send({
+                            'success': 1
+                        });
                 }
             });
-        });
 
     }
+
 });
 
 /*
-GET /objectData - get an object's data
+DELETE /eventVolume - delete event volume relation
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-id* - STR id of object
-processed - BOOLEAN true will return post-processed data for types that support it
-blurb - BOOLEAN true will only return 200 characters and will not update the view counter
+id* - STR id of event
+v* - STR name of volume
 
 RESPONSE CODES
-200 - Valid Object
-	returns json document objectData
+200 - Valid
+	returns success
 500 - Error
 	returns error
 */
-router.get('/objectData').bind(function (req, res, params) {
+router.del('/eventVolume').bind(function(req, res, params) {
 
-	if (auth(params.username, params.password, res)) {
+    if (auth(params.username, params.password, res)) {
 
         async.series([
 
-            function(callback) {
-                checkParams(params, ['id'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                db.collection('o', function (err, collection) {
-                    if (params.blurb == 'true') {
-                        // just find, no modify
-                        collection.find({'_id':new mongodb.ObjectID(params.id)}).toArray(function(err, docs) {
-                            callback(err, docs[0]);
-                        });
-                    } else {
-                        // find and modify
-                        collection.findAndModify({'_id':new mongodb.ObjectID(params.id)}, [['_id','asc']], {'$set':{'lastView':Math.round((new Date()).getTime() / 1000)}}, {}, function(err, doc) {
-                            // place the object in results[2]
-                            callback(err, doc);
-                        });
-                    }
-                });
-            },
-            function(callback) {
-                // get data
-                db.collection('d', function (err, collection) {
-                    collection.find({'oId':new mongodb.ObjectID(params.id)}).toArray(function(err, docs) {
-                        // place the data in results[3]
-                        callback(err, docs[0].d);
+                function(callback) {
+                    checkParams(params, ['id', 'v'], function(err) {
+                        callback(err, '');
                     });
-                });
-            },
-            function(callback) {
-                if (params.blurb != 'true') {
-                    db.collection('o', function (err, collection) {
-                        collection.update({_id:new mongodb.ObjectID(params.id)},{'$inc':{numViews:1}}, function(err) {});
+                },
+                function(callback) {
+                    if (isValidMongoId(params.id)) {
                         callback(null, '');
-                    });
-                } else {
-                    callback(null, '');
-                }
-            }
-
-        ], function(err, results) {
-
-                if (err) {
-                    res.send(500, {}, {'error':err});
-                } else {
-
-                    var ht = results[3];
-
-                    if (params.processed == 'true') {
-
-                        // could check if data has been previously processed and is not out of data here
-
-                        // check first line for !# which indicates this is a script
-                        if (results[3].substr(0,2) == '!#') {
-                            // explode on newline
-                            // character limit on script names
-                            var l = results[3].substr(0,100).split("\n");
-                            // get script name
-                            var sc = l[0].substr(2);
-
-                            if (sc == 'md') {
-                                // process markdown
-                                ht = md(results[3].split("\n").slice(1).join("\n"), true);
-                            } else {
-                                // return script not found
-                                ht = 'script type '+sc+' not found';
-                            }
-                        } else {
-                            // convert links to href
-                            ht = urlize(ht);
-
-                            // convert newlines to br
-                            ht = ht.replace(/\n/g, '<br />');
-
-                            // embed images
-
-                            // could do all kinds of fancy stuff here
-                        }
-
+                    } else {
+                        callback('invalid id', '');
                     }
-
-                    if (params.blurb == 'true') {
-                        // limit the length of data to a blurb
-                        ht = ht.substring(0,200);
-                        ht = urlize(ht);
-                    }
-
-                    res.send({'success':1,'objectData':ht});
-                }
-        });
-
-    }
-
-});
-
-/*
-POST /objectRelation - add related object
-
-AUTH REQUIRED
-
-REQUEST PARAMS
-id* - STR id of object
-importance* - INT object importance of distint object
-dId* - STR distint object id
-dImportance* - INT distint object importance of object
-
-RESPONSE CODES
-200 - Valid Object
-	returns json document object
-500 - Error
-	returns error
-*/
-router.post('/objectRelation').bind(function (req, res, params) {
-
-	if (auth(params.username, params.password, res)) {
-
-        async.series([
-
-            function(callback) {
-                checkParams(params, ['id','importance','dId','dImportance'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                params.importance = parseInt(params.importance);
-                params.dImportance = parseInt(params.dImportance);
-                if (params.importance > 0 && params.importance < 11 && params.dImportance > 0 && params.dImportance < 11) {
-                    callback(null, '');
-                } else {
-                    callback ('importance and dImportance must be between 1 and 10', '');
-                }
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                if (isValidMongoId(params.dId)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid dId', '');
-                }
-            },
-            function(callback) {
-                // make sure distint object exists
-                db.collection('o', function(err, collection) {
-                    collection.find({'_id':new mongodb.ObjectID(params.dId)}).toArray(function(err, docs) {
-                        if (docs.length>0) {
-                            callback(null, '');
-                        } else {
-                            callback('distint object not found with _id '+params.dId, '');
-                        }
-                    });
-                });
-            },
-            function(callback) {
-                // add relation to object
-                db.collection('r', function(err, collection) {
-                    collection.insert({'dId':new mongodb.ObjectID(params.dId),'oId':new mongodb.ObjectID(params.id),'i':params.importance,'dI':params.dImportance}, function(err, docs) {
-                        callback(err, '');
-                    });
-                });
-            },
-            function(callback) {
-                // add relation to distint object
-                db.collection('r', function(err, collection) {
-                    collection.insert({'dId':new mongodb.ObjectID(params.id),'oId':new mongodb.ObjectID(params.dId),'i':params.dImportance,'dI':params.importance}, function(err, docs) {
-                        callback(err, '');
-                    });
-                });
-            },
-            function(callback) {
-                // add importance to object
-                db.collection('o', function(err, collection) {
-                    collection.update({'_id':new mongodb.ObjectID(params.id)}, {'$inc':{'importance':params.importance}}, {'safe':true}, function(err, docs) {
-                        callback(err, '');
-                    });
-                });
-            },
-            function(callback) {
-                // add importance to distant object
-                db.collection('o', function(err, collection) {
-                    collection.update({'_id':new mongodb.ObjectID(params.dId)}, {'$inc':{'importance':params.dImportance}}, {'safe':true}, function(err, docs) {
-                        callback(err, '');
-                    });
-                });
-            }
-
-        ], function(err, results) {
-
-                if (err) {
-                    res.send(500, {}, {'error':err});
-                } else {
-                    res.send({'success':1});
-                }
-        });
-
-    }
-
-});
-
-/*
-DELETE /objectRelation - delete object relation
-
-AUTH REQUIRED
-
-REQUEST PARAMS
-id* - STR id of object
-dId* - STR distint object id
-
-RESPONSE CODES
-200 - Valid Object
-	returns json document object
-500 - Error
-	returns error
-*/
-router.del('/objectRelation').bind(function (req, res, params) {
-
-	if (auth(params.username, params.password, res)) {
-
-        async.series([
-
-            function(callback) {
-                checkParams(params, ['id','dId'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                if (isValidMongoId(params.dId)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid dId', '');
-                }
-            },
-            function(callback) {
-                // remove relation from object
-                db.collection('r', function(err, collection) {
-                    collection.remove({'dId':new mongodb.ObjectID(params.dId),'oId':new mongodb.ObjectID(params.id)}, function(err, docs) {
-                        // remove importance from distint owner object
-                        db.collection('o', function(err, collection) {
-                            collection.update({'_id':new mongodb.ObjectID(params.dId)}, {'$inc':{'importance':-docs[0].i}}, {'safe':true}, function(err, docs) {
+                },
+                function(callback) {
+                    // make sure event exists
+                    db.collection('e', function(err, collection) {
+                        collection.find({
+                                '_id': new mongodb.ObjectID(params.id)
+                            }).toArray(function(err, docs) {
+                                if (docs.length > 0) {
+                                    callback(null, '');
+                                } else {
+                                    callback('event not found with _id ' + params.id, '');
+                                }
                             });
-                        });
-                        callback(err, '');
                     });
-                });
-            },
-            function(callback) {
-                // remove relation from distint object
-                db.collection('r', function(err, collection) {
-                    collection.remove({'dId':new mongodb.ObjectID(params.id),'oId':new mongodb.ObjectID(params.dId)}, function(err, docs) {
-                        // remove importance from owner object
-                        db.collection('o', function(err, collection) {
-                            collection.update({'_id':new mongodb.ObjectID(params.id)}, {'$inc':{'importance':-docs[0].i}}, {'safe':true}, function(err, docs) {
+                },
+                function(callback) {
+                    // remove event from volume
+                    db.collection('e', function(err, collection) {
+                        collection.update({
+                                '_id': new mongodb.ObjectID(params.id)
+                            }, {
+                                '$pull': {
+                                    'volumes': params.v
+                                }
+                            }, {
+                                'safe': true
+                            }, function(err, docs) {
+                                callback(err, '');
                             });
-                        });
-                        callback(err, '');
                     });
-                });
-            }
+                },
+                function(callback) {
 
-        ], function(err, results) {
+                    // subtract 1 from volume and lastModified
+                    db.collection('v', function(err, collection) {
+                        collection.update({
+                                'name': params.v
+                            }, {
+                                '$inc': {
+                                    'count': -1
+                                },
+                                '$set': {
+                                    'ts': Math.round((new Date()).getTime() / 1000)
+                                }
+                            }, {
+                                'safe': true,
+                                'upsert': true
+                            }, function(err, docs) {
+                                callback(err, '');
+                            });
+                    });
+
+                },
+
+            ], function(err, results) {
 
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    res.send({'success':1});
+                    res.send({
+                            'success': 1
+                        });
                 }
-        });
+            });
 
     }
 
 });
 
 /*
-GET /objectRelations - get object relations
+GET /volumes - get all volumes
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-id* - STR id of object
 
 RESPONSE CODES
 200 - Valid Object
@@ -537,306 +527,373 @@ RESPONSE CODES
 500 - Error
 	returns error
 */
-router.get('/objectRelations').bind(function (req, res, params) {
+router.get('/volumes').bind(function(req, res, params) {
 
-// of course all objects which are related but also
-
-// last edited nearly the same time
-// viewed nearly the same number of times
-// created nearly the same time
-
-	if (auth(params.username, params.password, res)) {
+    if (auth(params.username, params.password, res)) {
 
         async.series([
 
-            function(callback) {
-                checkParams(params, ['id'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                // get related objects and importance
-                db.collection('r', function(err, collection) {
-                    collection.find({'oId':new mongodb.ObjectID(params.id)}).sort({'i':-1}).toArray(function(err, docs) {
-                        // place the data in results[2]
-                        callback(err, docs);
+                function(callback) {
+                    // get related objects and importance
+                    db.collection('v', function(err, collection) {
+                        collection.find({
+                            }).sort({
+                                'count': -1
+                            }).toArray(function(err, docs) {
+                                // place the data in results[2]
+                                callback(err, docs);
+                            });
                     });
-                });
-            }
+                }
 
-        ], function(err, results) {
+            ], function(err, results) {
 
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    res.send({'success':1,'related':results[2]});
+                    res.send({
+                            'success': 1,
+                            'volumes': results[0]
+                        });
                 }
-        });
+            });
 
     }
 
 });
 
 /*
-POST /object - create an object
+POST /event - create an event
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-name* - STR name of the object
-data* - STR data of the object
+title* - STR title of the event
+d* - STR data of the event
 
 RESPONSE CODES
 200 - Object Created
-	returns json document object
+	returns json document event
 500 - Error
 	returns nothing
 */
-router.post('/object').bind(function (req, res, params) {
+router.post('/event').bind(function(req, res, params) {
 
-	if (auth(params.username, params.password, res)) {
+    if (auth(params.username, params.password, res)) {
 
         async.series([
 
-            function(callback) {
-                checkParams(params, ['name','data'], function(err) {
-                    callback(err, '');
-                });
-            },
+                function(callback) {
+                    checkParams(params, ['title', 'd'], function(err) {
+                        callback(err, '');
+                    });
+                },
 
-        ], function(err, results) {
+            ], function(err, results) {
 
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    db.collection('o', function (err, collection) {
-                        var i = {'name':params.name,'created':Math.round((new Date()).getTime() / 1000)};
+                    db.collection('e', function(err, collection) {
+                        var i = {
+                            'title': params.title,
+                            'created': Math.round((new Date()).getTime() / 1000)
+                        };
                         collection.insert(i, function(err, docs) {
                             if (err) {
-                                res.send(500, {}, {'error':err});
-                            } else {
-                                res.send({'success':1, 'object':docs[0]});
-                                // insert the data
-                                db.collection('d', function(err, collection) {
-                                    collection.insert({'oId':docs[0]._id,'d':params.data}, function(err, docs) {
+                                res.send(500, {}, {
+                                        'error': err
                                     });
+                            } else {
+                                res.send({
+                                        'success': 1,
+                                        'event': docs[0]
+                                    });
+                                db.collection('ed', function(err, collection) {
+                                    collection.insert({
+                                            'eId': docs[0]._id,
+                                            'd': params.d
+                                        }, function(err, docs) {});
                                 });
                             }
                         });
                     });
                 }
-        });
+            });
 
     }
 
 });
 
 /*
-PUT /object - update an object
+PUT /event - update an event
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-id* - STR id of the object
-name - STR name of the object
-data - STR data of the object
+id* - STR id of the event
+title - STR name of the event
+d - STR data of the event
 
 RESPONSE CODES
-200 - Valid Zone
-	returns json document object
+200 - Valid
+	returns json document event
 500 - Error
 	returns error
 */
-router.put('/object').bind(function (req, res, params) {
+router.put('/event').bind(function(req, res, params) {
 
-	if (auth(params.username, params.password, res)) {
+    if (auth(params.username, params.password, res)) {
 
         async.series([
 
-            function(callback) {
-                checkParams(params, ['id'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                // update d
-
-                editParams(params, ['data'], function(i) {
-
-                if (i.data) {
-
-                db.collection('d', function (err, collection) {
-                    collection.update({'oId':new mongodb.ObjectID(params.id)}, {'$set':{'d':i.data}}, {'safe':true}, function(err, docs) {
+                function(callback) {
+                    checkParams(params, ['id'], function(err) {
                         callback(err, '');
                     });
-                });
+                },
+                function(callback) {
+                    if (isValidMongoId(params.id)) {
+                        callback(null, '');
+                    } else {
+                        callback('invalid id', '');
+                    }
+                },
+                function(callback) {
+                    // update d
 
-                } else {
-                    callback(null, '');
+                    editParams(params, ['d'], function(i) {
+
+                        if (i.d) {
+
+                            db.collection('ed', function(err, collection) {
+                                collection.update({
+                                        'eId': new mongodb.ObjectID(params.id)
+                                    }, {
+                                        '$set': {
+                                            'd': i.d
+                                        }
+                                    }, {
+                                        'safe': true
+                                    }, function(err, docs) {
+                                        callback(err, '');
+                                    });
+                            });
+
+                        } else {
+                            callback(null, '');
+                        }
+
+                    });
+
+                },
+                function(callback) {
+                    // update o
+
+                    editParams(params, ['name'], function(i) {
+
+                        db.collection('e', function(err, collection) {
+                            i.lastEdit = Math.round((new Date()).getTime() / 1000);
+                            collection.update({
+                                    '_id': new mongodb.ObjectID(params.id)
+                                }, {
+                                    '$set': i
+                                }, {
+                                    'safe': true
+                                }, function(err, docs) {
+                                    if (err) {
+                                        callback(err, '');
+                                    } else {
+                                        // increment numEdits, don't really worry if it fails or not
+                                        collection.update({
+                                                _id: new mongodb.ObjectID(params.id)
+                                            }, {
+                                                '$inc': {
+                                                    numEdits: 1
+                                                }
+                                            }, function(err) {});
+                                        // put data in results[3]
+                                        callback(null, docs[0]);
+                                    }
+                                });
+                        });
+
+                    });
                 }
 
-                });
-
-            },
-            function(callback) {
-                // update o
-
-                editParams(params, ['name'], function(i) {
-
-                db.collection('o', function (err, collection) {
-                    i.lastEdit = Math.round((new Date()).getTime() / 1000);
-                    collection.update({'_id':new mongodb.ObjectID(params.id)}, {'$set':i}, {'safe':true}, function(err, docs) {
-                        if (err) {
-                            callback(err, '');
-                        } else {
-                            // increment numEdits, don't really worry if it fails or not
-                            collection.update({_id:new mongodb.ObjectID(params.id)},{'$inc':{numEdits:1}}, function(err) {});
-                            // put data in results[3]
-                            callback(null, docs[0]);
-                        }
-                    });
-                });
-
-                });
-            }
-
-        ], function(err, results) {
+            ], function(err, results) {
 
                 if (err) {
-                    res.send(500, {}, {'error':err});
+                    res.send(500, {}, {
+                            'error': err
+                        });
                 } else {
-                    res.send({'success':1, 'object':results[3]});
+                    res.send({
+                            'success': 1,
+                            'object': results[3]
+                        });
                 }
-        });
+            });
 
     }
 
 });
 
 /*
-DELETE /object - delete an object
+DELETE /event - delete an event
 
 AUTH REQUIRED
 
 REQUEST PARAMS
-id* - STR id of the object
+id* - STR id of the event
 
 RESPONSE CODES
-200 - Valid Zone
+200 - Valid
 	returns json document admin
 500 - Error
 	returns error
 */
-router.del('/object').bind(function (req, res, params) {
+router.del('/event').bind(function(req, res, params) {
 
-	if (auth(params.username, params.password, res)) {
+    if (auth(params.username, params.password, res)) {
 
         async.series([
 
-            function(callback) {
-                checkParams(params, ['id'], function(err) {
-                    callback(err, '');
-                });
-            },
-            function(callback) {
-                if (isValidMongoId(params.id)) {
-                    callback(null, '');
-                } else {
-                    callback('invalid id', '');
-                }
-            },
-            function(callback) {
-                db.collection('d', function (err, collection) {
-                    collection.remove({'oId':new mongodb.ObjectID(params.id)}, function(err) {
+                function(callback) {
+                    checkParams(params, ['id'], function(err) {
                         callback(err, '');
                     });
-                });
-            }
+                },
+                function(callback) {
+                    if (isValidMongoId(params.id)) {
+                        callback(null, '');
+                    } else {
+                        callback('invalid id', '');
+                    }
+                }
 
-        ], function(err, results) {
+            ], function(err, results) {
 
                 if (err) {
-                    res.send(500, {}, {'error':err});
-                } else {
-                    db.collection('o', function (err, collection) {
-                        collection.remove({'_id':new mongodb.ObjectID(params.id)}, function(err) {
-                            if (err) {
-                                res.send(500, {}, {'error':err});
-                            } else {
-                                res.send({'success':1});
-                            }
+                    res.send(500, {}, {
+                            'error': err
                         });
+                } else {
+
+			// remove ed data
+                    db.collection('ed', function(err, collection) {
+			collection.remove({'eId':new mongodb.ObjectID(params.id)}, function(err, result) {
+			});
+			});
+
+                    // loop through and decrement/timestamp volumes
+
+                    db.collection('e', function(err, collection) {
+                        collection.findAndModify({
+                                _id: new mongodb.ObjectID(params.id)
+                            }, [
+                                ['_id', 'asc']
+                            ], {}, {
+                                remove: true
+                            }, function(err, object) {
+                                if (err) {
+                                    res.send(500, {}, {
+                                            'error': err
+                                        });
+                                } else {
+
+                                    // subtract 1 from volume and lastModified for each volume
+                                    db.collection('v', function(err, collection) {
+                                        for (var i = 0; i < object.volumes.length; i++) {
+                                            collection.update({
+                                                    'name': object.volumes[i]
+                                                }, {
+                                                    '$inc': {
+                                                        'count': -1
+                                                    },
+                                                    '$set': {
+                                                        'ts': Math.round((new Date()).getTime() / 1000)
+                                                    }
+                                                }, {
+                                                    'safe': true,
+                                                    'upsert': true
+                                                }, function(err, docs) {});
+                                        }
+                                    });
+
+
+                                    res.send({
+                                            'success': 1
+                                        });
+                                }
+                            });
                     });
                 }
-        });
+            });
 
     }
 
 });
 
 // db open START
-db.open(function (err, db) {
-if (db) {
+db.open(function(err, db) {
+    if (db) {
 
-require('http').createServer(function (request, response) {
+        require('http').createServer(function(request, response) {
 
-    if (request.method == 'OPTIONS') {
+            if (request.method == 'OPTIONS') {
 
-        response.writeHead(200, {'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Methods':'GET, POST, PUT, OPTIONS, DELETE'});
-        response.end();
+                response.writeHead(200, {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS, DELETE'
+                    });
+                response.end();
 
-    } else {
+            } else {
 
-    // break out params
-    var up = url.parse(request.url, true);
+                // break out params
+                var up = url.parse(request.url, true);
 
-    console.log(up.pathname);
+                // check if this is a file upload
+                if (up.pathname === '/upload' && request.method === 'POST') {
 
-    // check if this is a file upload
-    if (up.pathname === '/upload' && request.method === 'POST') {
+                    // parse a file upload
+                    var form = new multiparty.Form({
+                            autoFields: true,
+                            autoFiles: true
+                        });
 
-        // parse a file upload
-        var form = new multiparty.Form({autoFields:true,autoFiles:true});
+                    form.on('error', function(err) {
 
-        form.on('error', function(err) {
+                        console.log(err);
+                        response.writeHead(400, {
+                                'content-type': 'text/plain'
+                            });
+                        response.end("invalid request: " + err);
 
-            console.log(err);
-            response.writeHead(400, {'content-type': 'text/plain'});
-            response.end("invalid request: " + err);
+                    });
 
-        });
+                    form.on('close', function() {
 
-        form.on('close', function() {
-            
-        });
+                    });
 
-        form.on('file', function(name, file) {
-            console.log(file);
-        });
+                    form.on('file', function(name, file) {
+                        console.log(file);
+                    });
 
-        form.parse(request, function(err, fields, files) {
+                    form.parse(request, function(err, fields, files) {
 
-            console.log('---------------NEW UPLOAD REQUEST---------------');
-            console.log('username '+fields.username);
-            console.log('password '+fields.password);
-            console.log('FILES:');
-            console.log(files);
+                        console.log('---------------NEW UPLOAD REQUEST---------------');
+                        console.log('username ' + fields.username);
+                        console.log('password ' + fields.password);
+                        console.log('FILES:');
+                        console.log(files);
 
-/**
+                        /**
             if (fields.username == conf.username && bcrypt.compareSync(fields.password, conf.password)) {
 
                 response.setHeader("Access-Control-Allow-Origin", "*");
@@ -854,85 +911,144 @@ require('http').createServer(function (request, response) {
             }
 **/
 
-        });
+                    });
 
-    } else {
+                } else {
 
-        // this is an API request
+                    // this is an API request
 
-        var body = "";
-        request.addListener('data', function (chunk) { body += chunk });
-        request.addListener('end', function () {
-            // Dispatch the request to the router
-            router.handle(request, body, function (result) {
-                result.headers['Access-Control-Allow-Origin'] = '*';
-                result.headers['Access-Control-Allow-Methods'] = '*';
-                result.headers['Access-Control-Allow-Headers'] = 'X-Requested-With';
-                response.writeHead(result.status, result.headers);
-                response.end(result.body);
-                console.log('###### '+request.method+' '+request.url+" ######\n"+result.body);
+                    var body = "";
+                    request.addListener('data', function(chunk) {
+                        body += chunk
+                    });
+                    request.addListener('end', function() {
+                        // Dispatch the request to the router
+                        router.handle(request, body, function(result) {
+                            result.headers['Access-Control-Allow-Origin'] = '*';
+                            result.headers['Access-Control-Allow-Methods'] = '*';
+                            result.headers['Access-Control-Allow-Headers'] = 'X-Requested-With';
+                            response.writeHead(result.status, result.headers);
+                            response.end(result.body);
+                            console.log('###### ' + request.method + ' ' + request.url + " ######\n" + result.body);
+                        });
+                    });
+
+                }
+
+            }
+
+        }).listen(8000);
+        console.log('listening on port 8000');
+
+        // local memory update loop
+
+        function ml() {
+
+        }
+
+        ml();
+
+        // run it every minute
+        setInterval(ml, 60000);
+
+        // startup
+
+        // indexes
+
+        // events
+        db.ensureIndex('e', 'created', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('e', 'lastView', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('e', 'lastEdit', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('e', 'numEdits', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('e', 'numViews', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('e', 'volumes', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+
+        // event data
+        db.ensureIndex('ed', 'eId', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+
+        // volumes
+        db.ensureIndex('v', 'name', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('v', 'count', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+        db.ensureIndex('v', 'lastModified', {
+                'unique': false
+            }, function(err, name) {
+                if (err) {
+                    console.log(err)
+                }
+            });
+
+
+        // get config settings from db
+        db.collection('c', function(err, collection) {
+            collection.find({}).toArray(function(err, docs) {
+                if (docs.length == 0) {
+                    // this database has default settings
+                    conf.username = 'username';
+                    conf.password = bcrypt.hashSync('password', 8);
+                } else {
+                    // this database has settings
+                    conf.username = docs[0].username;
+                    conf.password = docs[0].password;
+                }
             });
         });
 
+    } else {
+        console.log('db error');
+        console.log(err);
     }
-
-    }
-
-}).listen(8000);
-console.log('listening on port 8000');
-
-} else {
-    console.log('db error');
-    console.log(err);
-}
 });
-
-// local memory update loop
-function ml() {
-
-}
-
-ml();
-
-// run it every minute
-setInterval(ml,60000);
-
-// startup
-
-// indexes
-
-// [o]bjects
-db.ensureIndex('o', 'importance', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-db.ensureIndex('o', 'created', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-db.ensureIndex('o', 'lastView', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-db.ensureIndex('o', 'lastEdit', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-db.ensureIndex('o', 'numEdits', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-db.ensureIndex('o', 'numViews', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-
-// [d]ata
-db.ensureIndex('d', 'oId', {'unique':true}, function(err, name) { if (err) { console.log(err) } });
-
-// [c]onfig
-//db.ensureIndex('c', '', {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-
-// [r]elations
-db.ensureIndex('r', {'dId':1,'i':1}, {'unique':false}, function(err, name) { if (err) { console.log(err) } });
-
-// global conf
-var conf = {};
-
-// get config settings from db
-db.collection('c', function (err, collection) {
-    collection.find({}).toArray(function(err, docs) {
-        if (docs.length == 0) {
-            // this database has default settings
-            conf.username = 'username';
-            conf.password = bcrypt.hashSync('password', 8);
-        } else {
-            // this database has settings
-            conf.username = docs[0].username;
-            conf.password = docs[0].password;
-        }
-    });
-});
-
