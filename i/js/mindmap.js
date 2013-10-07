@@ -314,16 +314,83 @@ function showVolumes() {
     apiCall('/volumes', 'GET', {
     }, function (err, data) {
         console.log(data);
-	shuffleArray(data.volumes);
+
+// first generate each level
+// height, number of elements
+// 233, 5
+// 144, 8
+// 89, 13
+// 55, 21
+// 34, 21
+// 21, 21
+
+	// first generate x, y spiral values
+var x = 0,
+        y = 0,
+        delta = [0, -1],
+        width = 6,
+        height = 6;
+
+	var locs = {};
+
+	$("#mainWindow").html('<canvas id="volcan" height="800" width="'+$('#mainWindow').width()+'" style=""></canvas>');
+	var volcan = document.getElementById("volcan");
+	var context = volcan.getContext("2d");
+	context.textBaseline = 'middle';
+	context.textAlign = 'center';
+	context.font = "14px verdana";
         for (var i = 0; i < data.volumes.length; i++) {
-		console.log(data.volumes[i]);
+
+        if ((-width/2 < x <= width/2) 
+                && (-height/2 < y <= height/2)) {
+		locs[data.volumes[i].name] = [context.canvas.width/2+x*100, context.canvas.height/2+y*60];
+
+		//console.log(data.volumes[i]);
+		//context.fillRect(context.canvas.width/2+x*50, context.canvas.height/2+y*50, 5, 5);
+		context.fillStyle = 'white';
+		context.fillRect(context.canvas.width/2+x*100-40, context.canvas.height/2+y*60-10, 80, 20);
+		context.fillStyle = 'black';
+		context.fillText(data.volumes[i].name+":"+data.volumes[i].count, context.canvas.width/2+x*100, context.canvas.height/2+y*60);
 		$("#mainWindow").append('<a href="#" rel="'+data.volumes[i].count+'" onClick="showEvents(\''+data.volumes[i].name+'\'); return false;">'+data.volumes[i].name+'</a> ');
         }
-	$.fn.tagcloud.defaults = {
-  size: {start: 18, end: 46, unit: 'pt'},
-  color: {start: '#cde', end: '#f52'}
-};
-	$("#mainWindow a").tagcloud();
+
+        if (x === y 
+                || (x < 0 && x === -y) 
+                || (x > 0 && x === 1-y)){
+            // change direction
+            delta = [-delta[1], delta[0]]            
+        }
+
+        x += delta[0];
+        y += delta[1];
+
+        }
+
+	// change context to draw under
+	context.globalCompositeOperation = 'destination-over';
+
+	// loop through again and draw connections to locs
+	for (var i = 0; i < data.volumes.length; i++) {
+		if (data.volumes[i].count > 0) {
+
+		// set pencil to this volume
+		context.moveTo(locs[data.volumes[i].name][0], locs[data.volumes[i].name][1]);
+
+		// loop through all connections for this volume
+		if (data.volumes[i].connections) {
+			for (var key in data.volumes[i].connections) {
+				var obj = data.volumes[i].connections[key];
+				// draw tp connection
+				context.lineTo(locs[key][0], locs[key][1]);
+				context.strokeStyle = '#'+Math.floor(Math.random()*16777215).toString(16);;
+				context.stroke();
+				console.log('parent: '+data.volumes[i].name+'('+locs[data.volumes[i].name][0]+', '+locs[data.volumes[i].name][1]+') | child: '+key+'('+locs[key][0]+', '+locs[key][1]);
+			}
+		}
+		}
+
+	}
+
     });
 
 }
@@ -471,7 +538,7 @@ function volumeConnections(v) {
 		var s = '';
 		for (var key in data.volumes[0].connections) {
 			var obj = data.volumes[0].connections[key];
-			s += key+' ';
+			s += key+':'+obj+' ';
 		}
 		alert(s);
         }

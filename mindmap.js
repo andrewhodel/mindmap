@@ -400,7 +400,7 @@ router.post('/eventVolume').bind(function(req, res, params) {
             ], function(err, results) {
 
 		//console.log(results);
-
+				if (results[2][0].volumes) {
 				for (var i=0; i<results[2][0].volumes.length; i++) {
 
 					if (results[2][0].volumes[i] != params.v) {
@@ -435,6 +435,7 @@ router.post('/eventVolume').bind(function(req, res, params) {
                     });
 					}
 
+				}
 				}
 
                 if (err) {
@@ -562,7 +563,6 @@ router.del('/eventVolume').bind(function(req, res, params) {
 				console.log(err);
                             });
                     });
-					
 					// as well as subtract 1 to params.v for each other volume
                     db.collection('v', function(err, collection) {
 			var variable = 'connections.'+params.v;
