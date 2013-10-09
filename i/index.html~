@@ -66,6 +66,7 @@
 <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
 <script src="js/jquery.cookie.js"></script>
 <script src="js/jquery.inview.min.js"></script>
+<script src="js/jquery.uploadfile.min.js"></script>
 <script src="js/bootstrap.min.js"></script>
 <script src="js/mindmap.js"></script>
 </body>
