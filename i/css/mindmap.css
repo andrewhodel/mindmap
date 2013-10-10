@@ -136,3 +136,24 @@ html,body {
     text-align: right;
     color: #888;
 }
+
+.fileIcon {
+    display: inline-block;
+    margin: 10px;
+    height: 130px;
+    width: 100px;
+    overflow: hidden;
+    text-align: center;
+}
+
+.fileInBin {
+    display: inline-block;
+    margin: 10px;
+    height: 100px;
+    width: 500px;
+    text-align: left;
+    background-color: #fff;
+    overflow: hidden;
+    padding: 4px;
+    vertical-align: middle;
+}

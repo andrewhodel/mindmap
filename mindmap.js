@@ -9,6 +9,11 @@ var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
 var multiparty = require('multiparty');
 var util = require('util');
+var mime = require('mime');
+var im = require('imagemagick');
+var sys = require('sys')
+var exec = require('child_process').exec;
+var path = require('path');
 var db = new mongodb.Db(config.mongo.dbname, new mongodb.Server(config.mongo.host, config.mongo.port, {
     'auto_reconnect': true
 }), {
@@ -949,18 +954,13 @@ router.get('/filebin').bind(function (req, res, params) {
         async.series([
 
             function (callback) {
-                // get volumes
+                // get filebin
 
-                var f = {};
-
-                // first figure out volumes
-                if (params.single != undefined) {
-                    f.name = params.single;
-                }
-
-                db.collection('v', function (err, collection) {
-                    collection.find(f).sort({
-                        'count': -1
+                db.collection('filebin', function (err, collection) {
+                    collection.find({
+                        'event': null
+                    }).sort({
+                        'created': -1
                     }).toArray(function (err, docs) {
                         // place the data in results[2]
                         callback(err, docs);
@@ -977,7 +977,7 @@ router.get('/filebin').bind(function (req, res, params) {
             } else {
                 res.send({
                     'success': 1,
-                    'volumes': results[0]
+                    'filebin': results[0]
                 });
             }
         });
@@ -1350,37 +1350,118 @@ router.post('/fetch').bind(function (req, res, params) {
 });
 
 // function to load a fs file into gridstore
-function fileToDb(file, cb) {
-		var db = new Db('test', new Server('locahost', 27017));
-// Establish connection to db
-db.open(function(err, db) {
-  // Our file ID
-  var fileId = new ObjectID();
 
-  // Open a new file
-  var gridStore = new GridStore(db, fileId, 'w');
+function fileToDb(fileId, filepath) {
 
-  // Read the filesize of file on disk (provide your own)
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  // Read the buffered data for comparision reasons
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
+    // Open a new file
+    var gridStore = new mongodb.GridStore(db, fileId, 'w');
 
-  // Open the new file
-  gridStore.open(function(err, gridStore) {
+    // Open the new file
+    gridStore.open(function (err, gridStore) {
 
-    // Write the file to gridFS
-    gridStore.writeFile('./test/tests/functional/gridstore/test_gs_weird_bug.png', function(err, doc) {
+        if (err) {
+            callback(err, null);
+        }
 
-      // Read back all the written content and verify the correctness
-      GridStore.read(db, fileId, function(err, fileData) {
-        assert.equal(data.toString('base64'), fileData.toString('base64'))
-        assert.equal(fileSize, fileData.length);
+        // Write the file to gridFS
+        gridStore.writeFile(filepath, function (err, doc) {
+            console.log('added to gridfs ' + fileId);
 
-        db.close();
-      });
+            // delete source file
+            fs.unlink(filepath, function (err) {});
+
+        });
     });
-  });
-});
+}
+
+// function to process a file
+
+function processFile(fileId, filepath, filename) {
+    async.series([
+
+            // first process
+            function (callback) {
+                if (mime.lookup(filepath).indexOf('image') != -1) {
+                    // call error to skip image generation
+                    callback(null);
+                } else {
+                    callback(true);
+                }
+            },
+            function (callback) {
+                exec('identify ' + filepath + ' | cut -d" " -f 3', function (error, stdout, stderr) {
+                    callback(null, stdout);
+                });
+            },
+            function (callback) {
+                var basename = path.basename(filepath);
+                var dirname = path.dirname(filepath);
+                var thisname = dirname + '/100px_' + basename;
+                // create small thumb
+                exec('convert ' + filepath + ' -resize 100x100 ' + thisname, function (error, stdout, stderr) {
+                    callback(null, thisname);
+                });
+            },
+            function (callback) {
+                var basename = path.basename(filepath);
+                var dirname = path.dirname(filepath);
+                var thisname = dirname + '/600px_' + basename;
+                // create mid thumb
+                exec('convert ' + filepath + ' -resize 600x600 ' + thisname, function (error, stdout, stderr) {
+                    callback(null, thisname);
+                });
+            },
+
+        ],
+        function (err, results) {
+
+            // write null to exception
+            var u = {
+                'exception': undefined,
+                mimetype : mime.lookup(filepath)
+            };
+
+            if (!err) {
+                // this means image processing was done, add the thumbs to the filebin entries
+                u.thumbs = [];
+
+                // 100 px
+                var ofid = new mongodb.ObjectID();
+                u.thumbs[0] = {
+                    size: '100x100',
+                    fileId: ofid
+                };
+                fileToDb(ofid, results[2]);
+
+                // 600 px
+                var sfid = new mongodb.ObjectID();
+                u.thumbs[1] = {
+                    size: '600x600',
+                    fileId: sfid
+                };
+                fileToDb(sfid, results[3]);
+
+                u.imagesize = results[1];
+            }
+            
+            // update db with size and thumbnails
+            db.collection('filebin', function (err, collection) {
+
+                collection.update({
+                    'fileId': fileId
+                }, {
+                    '$set': u
+                }, {
+                    'safe': true
+                }, function (err, docs) {});
+
+            });
+
+            // call fileToDb for filepath
+            fileToDb(fileId, filepath);
+
+        });
+
 }
 
 // db open START
@@ -1388,6 +1469,8 @@ db.open(function (err, db) {
     if (db) {
 
         require('http').createServer(function (request, response) {
+        	
+        	console.log('###### ' + request.method + ' ' + request.url + " ######\n");
 
             if (request.method == 'OPTIONS') {
 
@@ -1406,54 +1489,110 @@ db.open(function (err, db) {
                 if (up.pathname === '/upload' && request.method === 'POST') {
 
                     // parse a file upload
-                    var form = new multiparty.Form({
-                        autoFields: true,
-                        autoFiles: true
-                    });
+                    var form = new multiparty.Form();
 
                     form.on('error', function (err) {
-
-                        console.log(err);
                         response.writeHead(400, {
                             'content-type': 'text/plain'
                         });
                         response.end("invalid request: " + err);
-
                     });
 
                     form.on('close', function () {
-
                     });
 
                     form.on('file', function (name, file) {
-                        console.log(file);
+                        // need to move this to form.parse, once form.parse returns more than 1 file
+                        // Our file ID
+                        var fileId = new mongodb.ObjectID();
+
+                        // add filebin entry for mongo as uploaded
+                        db.collection('filebin', function (err, collection) {
+                            var i = {
+                                'name': file.originalFilename,
+                                'fileId': fileId,
+                                'exception': 'processing',
+                                'created': Math.round((new Date()).getTime() / 1000)
+                            };
+                            collection.insert(i, function (err, docs) {});
+                        });
+                        // process file
+                        processFile(fileId, file.path, file.originalFilename, function (err) {
+
+                        });
                     });
 
                     form.parse(request, function (err, fields, files) {
+                    	if ('username' == conf.username && bcrypt.compareSync('password', conf.password)) {
+                        response.statusCode = 200;
+                        response.setHeader("Content-Type", "text/html");
+                        response.setHeader('Access-Control-Allow-Origin', '*');
+                        response.end('success');
+                     } else {
+                     	  response.statusCode = 401;
+                        response.setHeader("Content-Type", "text/html");
+                        response.setHeader('Access-Control-Allow-Origin', '*');
+                        response.end('error');
+                     }
+                    });
 
-                        console.log('---------------NEW UPLOAD REQUEST---------------');
-                        console.log('username ' + fields.username);
-                        console.log('password ' + fields.password);
-                        console.log('FILES:');
-                        console.log(files);
+                } else if (up.pathname === '/file' && request.method === 'GET') {
+                    /*
+GET /file - get a file
 
+REQUEST PARAMS
+fileId*
 
-            if (fields.username == conf.username && bcrypt.compareSync(fields.password, conf.password)) {
+RESPONSE CODES
+200 - Valid Object
+	returns json document object
+500 - Error
+	returns error
+*/
 
-                response.setHeader("Access-Control-Allow-Origin", "*");
-                response.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
-                response.writeHead(200, {'content-type': 'text/plain'});
-                response.end(util.inspect({fields: fields, files: files}));
+                    async.series([
 
-            } else {
+                        function (callback) {
+                            checkParams(up.query, ['fileId'], function (err) {
+                                callback(err, '');
+                            });
+                        },
+                        function (callback) {
+                            if (isValidMongoId(up.query.fileId)) {
+                                callback(null, '');
+                            } else {
+                                callback('invalid fileId', '');
+                            }
+                        },
 
-                response.setHeader("Access-Control-Allow-Origin", "*");
-                response.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
-                response.writeHead(401, {'content-type': 'text/plain'});
-                response.end('invalid login');
+                        function (callback) {
+                            mongodb.GridStore.exist(db, new mongodb.ObjectID(up.query.fileId), function (err, exists) {
+                                if (exists == true) {
+                                    // file exists, return it
+                                    callback(null);
+                                } else {
+                                    callback('file does not exist');
+                                }
+                            });
+                        }
 
-            }
+                    ], function (err, results) {
 
+                        if (err) {
+                            response.writeHead(500, {
+                                'content-type': 'text/plain'
+                            });
+                            response.end(err);
+                        } else {
+                            // need to get file and return it here
+                            var gridStore = new mongodb.GridStore(db, new mongodb.ObjectID(up.query.fileId), "r");
+                            gridStore.open(function (err, gridStore) {
+
+                                var stream = gridStore.stream(true);
+                                stream.pipe(response);
+
+                            });
+                        }
                     });
 
                 } else {
@@ -1472,7 +1611,6 @@ db.open(function (err, db) {
                             result.headers['Access-Control-Allow-Headers'] = 'X-Requested-With';
                             response.writeHead(result.status, result.headers);
                             response.end(result.body);
-                            console.log('###### ' + request.method + ' ' + request.url + " ######\n" + result.body);
                         });
                     });
 
@@ -1488,7 +1626,6 @@ db.open(function (err, db) {
         function ml() {
 
         }
-
         ml();
 
         // run it every minute
@@ -1567,6 +1704,22 @@ db.open(function (err, db) {
             }
         });
         db.ensureIndex('v', 'lastModified', {
+            'unique': false
+        }, function (err, name) {
+            if (err) {
+                console.log(err)
+            }
+        });
+        db.ensureIndex('v', 'connections', {
+            'unique': false
+        }, function (err, name) {
+            if (err) {
+                console.log(err)
+            }
+        });
+
+        // filebin
+        db.ensureIndex('filebin', 'event', {
             'unique': false
         }, function (err, name) {
             if (err) {
@@ -1654,14 +1807,14 @@ db.open(function (err, db) {
         // get config settings from db
         db.collection('c', function (err, collection) {
             collection.find({}).toArray(function (err, docs) {
-                if (docs.length == 0) {
+                if (docs.length>0) {
+                    // this database has settings
+                    conf.username = docs[0].username;
+                    conf.password = bcrypt.hashSync(docs[0].password, 8);
+                } else {
                     // this database has default settings
                     conf.username = 'username';
                     conf.password = bcrypt.hashSync('password', 8);
-                } else {
-                    // this database has settings
-                    conf.username = docs[0].username;
-                    conf.password = docs[0].password;
                 }
             });
         });

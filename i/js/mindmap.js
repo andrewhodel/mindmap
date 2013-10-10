@@ -1,5 +1,4 @@
 // helper function for all API calls
-
 var serverApi = 'http://192.168.1.12:8000';
 
 function apiCall(endpoint, requestType, requestData, callback) {
@@ -95,7 +94,7 @@ function showEvents(volume) {
 
     apiCall('/events', 'GET', {
         'sort': 'created',
-	'volumes': volume
+        'volumes': volume
     }, function (err, data) {
         console.log(data.events);
         for (var i = 0; i < data.events.length; i++) {
@@ -107,11 +106,11 @@ function showEvents(volume) {
                 if (isInView) {
                     // element is now visible in the viewport
                     var tid = this.id.slice(9);
-                    console.log(tid);
+                    //console.log(tid);
 
                     eventData(tid, true, function (data) {
-				$('#eventText' + tid).html(data.eventData.d);
-			});
+                        $('#eventText' + tid).html(data.eventData.d);
+                    });
 
                     if (visiblePartY == 'top') {
                         // top part of element is visible
@@ -138,9 +137,9 @@ function eventData(id, html, cb) {
         'html': html
     }, function (err, data) {
         if (!err) {
-            console.log(data);
+            //console.log(data);
             //$('#eventText' + id).html(data.eventData.d);
-		cb(data);
+            cb(data);
         } else {
             console.log(err);
         }
@@ -154,11 +153,11 @@ function eventUpdate(id) {
         'id': id
     }, function (err, data) {
         if (!err) {
-            console.log(data);
+            //console.log(data);
             $('#eventItem' + id).replaceWith(eventObj(data.events[0]));
-                    eventData(id, true, function (data) {
-				$('#eventText' + id).html(data.eventData.d);
-			});
+            eventData(id, true, function (data) {
+                $('#eventText' + id).html(data.eventData.d);
+            });
         } else {
             console.log(err);
         }
@@ -170,16 +169,16 @@ function eventObj(obj) {
     // return formatted object
 
     var h = '<div id="eventItem' + obj._id + '" class="eventItem">';
-    
+
     h += '<div class="eventTimes">';
     h += 'views ' + obj.numViews + '<br /> edits ' + obj.numEdits + '';
     h += '</div>';
-    
-    var created = new Date(obj.created*1000);
-    var lastEdit = new Date(obj.lastEdit*1000);
- 
-    var months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    
+
+    var created = new Date(obj.created * 1000);
+    var lastEdit = new Date(obj.lastEdit * 1000);
+
+    var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
     h += '<div class="eventCreatedBig">';
     h += '<div class="eventCreatedBigMonth">' + months[created.getMonth()] + '';
 
@@ -188,7 +187,7 @@ function eventObj(obj) {
 
     h += '</div>';
     h += '</div>';
-    
+
     h += '<div class="eventTitle">';
     h += '<div class="eventTitleName">';
     h += obj.title;
@@ -197,7 +196,7 @@ function eventObj(obj) {
     h += '<span>created</span> ' + obj.created + ' <span>edited</span> ' + obj.lastEdit + '';
     h += '</div>';
     h += '</div>';
-    
+
     h += '<div class="eventText" id="eventText' + obj._id + '">';
     h += '</div>';
 
@@ -215,7 +214,7 @@ function eventObj(obj) {
         }
     }
     h += '</div>';
-    
+
     h += '<button style="margin-left: 6px; float: right;" class="btn btn-danger" type="button" onClick="deleteEvent(\'' + obj._id + '\'); return false;">delete</button>';
     h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="editEvent(\'' + obj._id + '\'); return false;">edit</button>';
     h += '<div class="input-append eventAddVolume clearfix">';
@@ -272,85 +271,81 @@ $('#logoutLink').on("click", function (event) {
 function showVolumes() {
     $("#mainWindow").html('');
 
-    apiCall('/volumes', 'GET', {
-    }, function (err, data) {
-        console.log(data);
+    apiCall('/volumes', 'GET', {}, function (err, data) {
+        //console.log(data);
 
-// first generate each level
-// height, number of elements
-// 233, 5
-// 144, 8
-// 89, 13
-// 55, 21
-// 34, 21
-// 21, 21
+        // first generate each level
+        // height, number of elements
+        // 233, 5
+        // 144, 8
+        // 89, 13
+        // 55, 21
+        // 34, 21
+        // 21, 21
 
-	// first generate x, y spiral values
-var x = 0,
-        y = 0,
-        delta = [0, -1],
-        width = 6,
-        height = 6;
+        // first generate x, y spiral values
+        var x = 0,
+            y = 0,
+            delta = [0, -1],
+            width = 6,
+            height = 6;
 
-	var locs = {};
+        var locs = {};
 
-	$("#mainWindow").html('<canvas id="volcan" height="800" width="'+$('#mainWindow').width()+'" style=""></canvas>');
-	var volcan = document.getElementById("volcan");
-	var context = volcan.getContext("2d");
-	context.textBaseline = 'middle';
-	context.textAlign = 'center';
-	context.font = "14px verdana";
+        $("#mainWindow").html('<canvas id="volcan" height="800" width="' + $('#mainWindow').width() + '" style=""></canvas>');
+        var volcan = document.getElementById("volcan");
+        var context = volcan.getContext("2d");
+        context.textBaseline = 'middle';
+        context.textAlign = 'center';
+        context.font = "14px verdana";
         for (var i = 0; i < data.volumes.length; i++) {
 
-        if ((-width/2 < x <= width/2) 
-                && (-height/2 < y <= height/2)) {
-		locs[data.volumes[i].name] = [context.canvas.width/2+x*100, context.canvas.height/2+y*60];
+            if ((-width / 2 < x <= width / 2) && (-height / 2 < y <= height / 2)) {
+                locs[data.volumes[i].name] = [context.canvas.width / 2 + x * 100, context.canvas.height / 2 + y * 60];
 
-		//console.log(data.volumes[i]);
-		//context.fillRect(context.canvas.width/2+x*50, context.canvas.height/2+y*50, 5, 5);
-		context.fillStyle = 'white';
-		context.fillRect(context.canvas.width/2+x*100-40, context.canvas.height/2+y*60-10, 80, 20);
-		context.fillStyle = 'black';
-		context.fillText(data.volumes[i].name+":"+data.volumes[i].count, context.canvas.width/2+x*100, context.canvas.height/2+y*60);
-		$("#mainWindow").append('<a href="#" rel="'+data.volumes[i].count+'" onClick="showEvents(\''+data.volumes[i].name+'\'); return false;">'+data.volumes[i].name+'</a> ');
-        }
+                //console.log(data.volumes[i]);
+                //context.fillRect(context.canvas.width/2+x*50, context.canvas.height/2+y*50, 5, 5);
+                context.fillStyle = 'white';
+                context.fillRect(context.canvas.width / 2 + x * 100 - 40, context.canvas.height / 2 + y * 60 - 10, 80, 20);
+                context.fillStyle = 'black';
+                context.fillText(data.volumes[i].name + ":" + data.volumes[i].count, context.canvas.width / 2 + x * 100, context.canvas.height / 2 + y * 60);
+                $("#mainWindow").append('<a href="#" rel="' + data.volumes[i].count + '" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;">' + data.volumes[i].name + '</a> ');
+            }
 
-        if (x === y 
-                || (x < 0 && x === -y) 
-                || (x > 0 && x === 1-y)){
-            // change direction
-            delta = [-delta[1], delta[0]]            
-        }
+            if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1 - y)) {
+                // change direction
+                delta = [-delta[1], delta[0]]
+            }
 
-        x += delta[0];
-        y += delta[1];
+            x += delta[0];
+            y += delta[1];
 
         }
 
-	// change context to draw under
-	context.globalCompositeOperation = 'destination-over';
+        // change context to draw under
+        context.globalCompositeOperation = 'destination-over';
 
-	// loop through again and draw connections to locs
-	for (var i = 0; i < data.volumes.length; i++) {
-		if (data.volumes[i].count > 0) {
+        // loop through again and draw connections to locs
+        for (var i = 0; i < data.volumes.length; i++) {
+            if (data.volumes[i].count > 0) {
 
-		// set pencil to this volume
-		context.moveTo(locs[data.volumes[i].name][0], locs[data.volumes[i].name][1]);
+                // set pencil to this volume
+                context.moveTo(locs[data.volumes[i].name][0], locs[data.volumes[i].name][1]);
 
-		// loop through all connections for this volume
-		if (data.volumes[i].connections) {
-			for (var key in data.volumes[i].connections) {
-				var obj = data.volumes[i].connections[key];
-				// draw tp connection
-				context.lineTo(locs[key][0], locs[key][1]);
-				context.strokeStyle = '#'+Math.floor(Math.random()*16777215).toString(16);;
-				context.stroke();
-				console.log('parent: '+data.volumes[i].name+'('+locs[data.volumes[i].name][0]+', '+locs[data.volumes[i].name][1]+') | child: '+key+'('+locs[key][0]+', '+locs[key][1]);
-			}
-		}
-		}
+                // loop through all connections for this volume
+                if (data.volumes[i].connections) {
+                    for (var key in data.volumes[i].connections) {
+                        var obj = data.volumes[i].connections[key];
+                        // draw tp connection
+                        context.lineTo(locs[key][0], locs[key][1]);
+                        context.strokeStyle = '#' + Math.floor(Math.random() * 16777215).toString(16);;
+                        context.stroke();
+                        //console.log('parent: '+data.volumes[i].name+'('+locs[data.volumes[i].name][0]+', '+locs[data.volumes[i].name][1]+') | child: '+key+'('+locs[key][0]+', '+locs[key][1]);
+                    }
+                }
+            }
 
-	}
+        }
 
     });
 
@@ -366,48 +361,103 @@ function shuffleArray(array) {
     return array;
 }
 
-$('#filebinLink').on("click", function (event) {
-    event.preventDefault();
-    
-    //setup file uploads
-    var h = '<input type="file" multiple="multiple" id="uploadFiles" name="files[]]"><p id="uploadResponse"></p>';
-    $("#mainWindow").html(h);
-    
-    var input = document.getElementById("uploadFiles"), 
-        formdata = false;
+function fileIcon(file) {
+	var h = '<div class="fileIcon">';
+  if (file.exception != undefined) {
+  	  // display exception
+  	 h += '<p>'+file.exception+'</p>';
+  	}
+  if (file.thumbs != undefined) {
+  	  // display image thumbnail
+  	  h += '<img src="'+serverApi+'/file?username=username&password=password&fileId='+file.thumbs[0].fileId+'" />';
+  	} else {
+  		// display generic icon
+  	}
+  	h += '<p>'+file.name+'</p>';
+  	h += '</div>';
+  	return h;
+}
 
-    if (window.FormData) {
-        formdata = new FormData();
-    }
-    
-    input.addEventListener("change", function (evt) {
-        document.getElementById("uploadResponse").innerHTML = "Uploading . . ."
-        var i = 0, len = this.files.length, img, reader, file;
+function fileInBin(file) {
+	var h = '<div class="fileInBin">';
+  if (file.exception != undefined) {
+  	  // display exception
+  	 h += '<p>'+file.exception+'</p>';
+  	}
+  if (file.thumbs != undefined) {
+  	  // display image thumbnail
+  	  h += '<img src="'+serverApi+'/file?username=username&password=password&fileId='+file.thumbs[0].fileId+'" />';
+  	} else {
+  		// display generic icon
+  	}
+  	h += '<span>'+file.name+'</span>';
+  	h += '</div>';
+  	return h;
+}
 
-        formdata.append('username', $.cookie('username'));
-        formdata.append('password', $.cookie('password'));
+function loadFilebinFiles() {
+	$('#filebinFiles').html('');
+	apiCall('/filebin', 'GET', {}, function (err, data) {
 
-        for ( ; i < len; i++ ) {
-            file = this.files[i];
-
-            if (formdata) {
-                formdata.append("files[]", file);
+        if (err) {
+            alert(err.error);
+        } else {
+            for (var i=0; i<data.filebin.length; i++) {
+            	$('#filebinFiles').append(fileInBin(data.filebin[i]));
             }
         }
 
-        if (formdata) {
-            $.ajax({
-                url: serverApi+'/upload',
-                type: "POST",
-                data: formdata,
-                processData: false,
-                contentType: false,
-                complete: function (res) {
-                    console.log(res);
-                }
-            });
+    });
+}
+
+$('#filebinLink').on("click", function (event) {
+    event.preventDefault();
+    var h = '<input type="file" multiple="multiple" id="uploadFiles" name="files[]" /><output id="uploadList"></output>';
+    h += '<div id="filebinFiles"></div>';
+    $("#mainWindow").html(h);
+    
+    loadFilebinFiles();
+
+    document.getElementById('uploadFiles').addEventListener('change', function (evt) {
+
+        var files = evt.target.files; // FileList object
+        var formdata = new FormData();
+        formdata.append('username', $.cookie('username'));
+        formdata.append('password', $.cookie('password'));
+        // open xhr
+        var xhr = new XMLHttpRequest();
+        
+        // progress event
+        xhr.upload.addEventListener("progress", function (e) {
+            if (e.lengthComputable) {
+                var currentState = (e.loaded / e.total) * 100;
+                console.log(currentState);
+            }
+        }, false);
+        
+        // error event
+        xhr.upload.addEventListener("error", function (e) {
+            alert('error uploading file');
+        }, false);
+        
+        // loadend event
+        xhr.upload.addEventListener("loadend", function (e) {
+            loadFilebinFiles();
+        }, false);
+        
+        // Loop through the FileList
+        for (var i = 0, f; f = files[i]; i++) {
+
+            // add file to formdata
+            formdata.append('Filedata', files[i]);
+
         }
-    }, false);
+
+        // send xhr
+        xhr.open('POST', serverApi + '/upload');
+        xhr.send(formdata);
+
+    });
 
 });
 
@@ -436,7 +486,7 @@ function newEventSubmit() {
         if (err) {
             alert(err.error);
         } else {
-            console.log('Object: ' + $('#newEventName').val() + ' created');
+            //console.log('Object: ' + $('#newEventName').val() + ' created');
             $('#newEventName').val('');
             $('#newEventData').val('');
         }
@@ -447,22 +497,22 @@ function newEventSubmit() {
 }
 
 function editEvent(id) {
-	// hide eventText
-	$('#eventText' + id).hide();
-	$('#eventEdit' + id).show();
-	eventData(id, false, function (data) {
-		$('#eventEditText' + id).html(data.eventData.d);
-	});
+    // hide eventText
+    $('#eventText' + id).hide();
+    $('#eventEdit' + id).show();
+    eventData(id, false, function (data) {
+        $('#eventEditText' + id).html(data.eventData.d);
+    });
 }
 
 function cancelEdit(id) {
-	$('#eventEdit' + id).hide();
-	$('#eventText' + id).show();
+    $('#eventEdit' + id).hide();
+    $('#eventText' + id).show();
 }
 
 function saveEdit(id) {
-	$('#eventEdit' + id).hide();
-	$('#eventText' + id).show();
+    $('#eventEdit' + id).hide();
+    $('#eventText' + id).show();
 
     apiCall('/event', 'PUT', {
         'id': id,
@@ -473,9 +523,9 @@ function saveEdit(id) {
             alert(err.error);
         } else {
 
-		eventData(id, true, function (data) {
-			$('#eventText' + id).html(data.eventData.d);
-		});
+            eventData(id, true, function (data) {
+                $('#eventText' + id).html(data.eventData.d);
+            });
         }
 
     });
@@ -483,7 +533,7 @@ function saveEdit(id) {
 }
 
 function deleteEvent(id) {
-	$('#eventItem' + id).remove();
+    $('#eventItem' + id).remove();
 
     apiCall('/event', 'DELETE', {
         'id': id
@@ -491,8 +541,7 @@ function deleteEvent(id) {
 
         if (err) {
             alert(err.error);
-        } else {
-        }
+        } else {}
 
     });
 
@@ -541,12 +590,12 @@ function volumeConnections(v) {
         if (err) {
             alert(err.error);
         } else {
-		var s = '';
-		for (var key in data.volumes[0].connections) {
-			var obj = data.volumes[0].connections[key];
-			s += key+':'+obj+' ';
-		}
-		alert(s);
+            var s = '';
+            for (var key in data.volumes[0].connections) {
+                var obj = data.volumes[0].connections[key];
+                s += key + ':' + obj + ' ';
+            }
+            alert(s);
         }
 
     });
