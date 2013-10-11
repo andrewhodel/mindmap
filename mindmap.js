@@ -1014,14 +1014,12 @@ router.del('/file').bind(function (req, res, params) {
                     	for (var i=0; i<results[2][0].thumbs.length; i++) {
                     		mongodb.GridStore.unlink(db, results[2][0].thumbs[i].fileId, function(err, gridStore) {
                     			console.log('gridstore removing thumb');
-                    			console.log(err);
                        });
                     	}
                     }
                     // remove file from gridstore
                     mongodb.GridStore.unlink(db, new mongodb.ObjectID(params.fileId), function(err, gridStore) {
                     	console.log('gridstore removing file');
-                    	console.log(err);
                     });
 
                 }
@@ -1380,24 +1378,11 @@ router.post('/fetch').bind(function (req, res, params) {
                     'error': err
                 });
             } else {
-                res.send(200, {}, {
-                    'success': 1
-                });
+
                 // Our file ID
                 var fileId = new mongodb.ObjectID();
 
                 console.log('fetching file ' + params.url);
-
-                // add filebin entry for mongo as uploaded
-                db.collection('filebin', function (err, collection) {
-                    var i = {
-                        'name': params.url,
-                        'fileId': fileId,
-                        'exception': 'processing',
-                        'created': Math.round((new Date()).getTime() / 1000)
-                    };
-                    collection.insert(i, function (err, docs) {});
-                });
 
                 var s = params.url.split('/');
                 var tmp = "/tmp/" + fileId + '-' + s[s.length - 1];
@@ -1407,25 +1392,49 @@ router.post('/fetch').bind(function (req, res, params) {
                 var req = require('follow-redirects').http.request({hostname:urlp.hostname,path:urlp.path,method:urlp.method,port:urlp.port,headers:{
                 	'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
                 	}}, function (resp) {
-                		console.log(resp);
-                		var dlprogress = 0;
+                		if (resp.statusCode == 200) {
+                			
+                // add filebin entry for mongo as uploaded
+                db.collection('filebin', function (err, collection) {
+                    var i = {
+                        'name': params.url,
+                        'fileId': fileId,
+                        'exception': 'fetching',
+                        'created': Math.round((new Date()).getTime() / 1000)
+                    };
+                    collection.insert(i, function (err, docs) {});
+                });                
+                // send back success	
+                res.send(200, {}, {
+                    'success': 1
+                });
+                			
+                			// write data to file
                     resp.on('data', function(data) {
                     	filestream.write(data);
-                    	dlprogress += data.length;
-                    	console.log(dlprogress);
+                    	//console.log(data.length);
                     });
                     
                     resp.on('error', function(err) {
                     	console.log(err);
+                    	// error, need to update filebin entry
                     });
                     
                     resp.on('end', function() {
                     		processFile(fileId, tmp, function (err) {});
                     });
+                  } else {
+                  	// invalid fetch url
+                  	console.log('invalid fetch url');
+                res.send(500, {}, {
+                    'error': 'invalid fetch url'
+                });
+                  }
                 });
                 
                 filestream.on('error', function(err) {
                 	console.log(err);
+                	// error, need to update filebin entry
                 })
                 
                 req.on('error', function(err) {
@@ -1516,11 +1525,14 @@ function processFile(fileId, filepath, filename) {
 
         ],
         function (err, results) {
+        	
+        	var filestats = fs.statSync(filepath);
 
             // write null to exception
             var u = {
-                'exception': undefined,
-                mimetype : mime.lookup(filepath)
+                exception: undefined,
+                mimetype : mime.lookup(filepath),
+                size : filestats.size
             };
 
             if (!err) {
@@ -1613,7 +1625,7 @@ db.open(function (err, db) {
                             var i = {
                                 'name': file.originalFilename,
                                 'fileId': fileId,
-                                'exception': 'processing',
+                                'exception': 'uploaded',
                                 'created': Math.round((new Date()).getTime() / 1000)
                             };
                             collection.insert(i, function (err, docs) {});
@@ -1689,7 +1701,6 @@ db.open(function (err, db) {
                             // need to get file and return it here
                             var gridStore = new mongodb.GridStore(db, new mongodb.ObjectID(up.query.fileId), "r");
                             gridStore.open(function (err, gridStore) {
-                            	console.log(gridStore);
 
                                 var stream = gridStore.stream(true);
                                 response.setHeader("Content-Type", gridStore.contentType);

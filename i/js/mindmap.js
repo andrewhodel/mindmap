@@ -386,6 +386,7 @@ function fileIcon(file) {
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
     } else {
         // display generic icon
+        h += '<img src="img/fileicon.png" />';
     }
     h += '<p>' + file.name + '</p>';
     h += '<span><a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\');">Remove from event</a></span>';
@@ -404,6 +405,7 @@ function fileInBin(file, eventId) {
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
     } else {
         // display generic icon
+        h += '<img src="img/fileicon.png" />';
     }
     if (eventId) {
      h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\');">Move to event</a></span>';
