@@ -135,6 +135,7 @@ html,body {
 .eventFiles {
     border-top: 1px solid #ddd;
     margin-top: 10px;
+    padding-top: 10px;
 }
 
 .eventTimes {
@@ -145,11 +146,16 @@ html,body {
 
 .fileIcon {
     display: inline-block;
-    margin: 10px;
+    margin-left: 2px;
+    margin-right: 2px;
     height: 130px;
     width: 100px;
-    overflow: auto;
+    overflow: hidden;
     text-align: center;
+}
+
+.fileIcon .filename {
+	font-size: .8em;
 }
 
 .fileInBin {
@@ -162,4 +168,36 @@ html,body {
     overflow: hidden;
     padding: 4px;
     vertical-align: middle;
+}
+
+#filebinCon {
+	float: left;
+ width: 100%;
+ margin-top: 10px;
+}
+
+#filebinFiles {
+ margin-left: 280px;
+}
+
+#filebinNav {
+	float: left;
+	width: 240px;
+	margin-left: -100%;
+	border: 1px solid #666;
+	border-radius: 6px;
+	margin-top: 10px;
+	padding: 10px;
+	overflow: hidden;
+}
+
+#filebinNav p {
+	font-size: .8em;
+	color: #888;
+}
+
+#fetchPane {
+	border-top: 1px solid #666;
+	padding-top: 10px;
+	margin-top: 10px;
 }

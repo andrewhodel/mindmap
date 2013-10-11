@@ -377,32 +377,32 @@ function shuffleArray(array) {
 
 function fileIcon(file) {
     var h = '<div class="fileIcon">';
-    if (file.exception != undefined) {
-        // display exception
-        h += '<p>' + file.exception + '</p>';
-    }
+    h += '<a target="_blank" href="' + serverApi + '/file?fileId=' + file.fileId + '">';
     if (file.thumbs != undefined) {
         // display image thumbnail
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+    } else if (file.videoThumb != undefined) {
+    	   // display video thumbnail
+    	   h += '<img src="' + serverApi + '/file?fileId=' + file.videoThumb.fileId + '" />';
     } else {
         // display generic icon
         h += '<img src="img/fileicon.png" />';
     }
-    h += '<p>' + file.name + '</p>';
-    h += '<span><a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\');">Remove from event</a></span>';
+    h += '</a>';
+    h += '<p class="filename">' + file.name + '';
+    h += '<br /><a href="#" onClick="fileInfo(\'' + file.fileId + '\');">I</a> | <a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\');">X</a></p>';
     h += '</div>';
     return h;
 }
 
 function fileInBin(file, eventId) {
     var h = '<div class="fileInBin">';
-    if (file.exception != undefined) {
-        // display exception
-        h += '<p>' + file.exception + '</p>';
-    }
     if (file.thumbs != undefined) {
         // display image thumbnail
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+    } else if (file.videoThumb != undefined) {
+    	   // display video thumbnail
+    	   h += '<img src="' + serverApi + '/file?fileId=' + file.videoThumb.fileId + '" />';
     } else {
         // display generic icon
         h += '<img src="img/fileicon.png" />';
@@ -411,7 +411,7 @@ function fileInBin(file, eventId) {
      h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\');">Move to event</a></span>';
     }
     h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\');">Delete file</a></span>';
-    h += '<span><a href="' + serverApi + '/file?fileId=' + file.fileId + '">Open file</a></span>';
+    h += '<span><a target="_blank" href="' + serverApi + '/file?fileId=' + file.fileId + '">Open file</a></span>';
     h += '<span>' + file.name + '</span>';
     h += '</div>';
     return h;
@@ -506,8 +506,15 @@ function addFilesToEvent(eventId) {
 $('#filebinLink').on("click", function (event) {
     event.preventDefault();
 
-    var h = '<p><input type="file" multiple="multiple" id="uploadFiles" name="files[]" /><output id="uploadList"></output></p>';
-    h += '<p><input type="text" id="fetchUrl" placeholder="fetch url (press enter)" /></p>';
+    var h = '<div id="filebinCon"><div id="filebinFiles"></div></div><div id="filebinNav"><div id="uploadPane">';
+    h += '<h3>Upload</h3>';
+    h += '<p>Upload files from your computer.</p>';
+    h += '<input type="file" multiple="multiple" id="uploadFiles" name="files[]" /><br /><br /><div id="uploadProgress"></div>';
+    h += '</div>';
+    h += '<div id="fetchPane">';
+    h += '<h3>Fetch</h3>';
+    h += '<p>Paste a http/ftp, youtube or torrent magnet url and press [enter].</p>';
+    h += '<input type="text" id="fetchUrl" placeholder="fetch url (press enter)" /></div></div>';
 
     var myfilebinToEvent = '';
     if (filebinToEvent != '') {
@@ -516,7 +523,7 @@ $('#filebinLink').on("click", function (event) {
         h += '<h2>Select files to send to ' + myfilebinToEvent + '</h2>';
     }
 
-    h += '<div id="filebinFiles"></div>';
+    h += '';
     $("#mainWindow").html(h);
 
     loadFilebinFiles(undefined, function (data) {
@@ -557,12 +564,18 @@ $('#filebinLink').on("click", function (event) {
         formdata.append('password', $.cookie('password'));
         // open xhr
         var xhr = new XMLHttpRequest();
+        
+        // load progress bar
+            var hh = '<div class="progress progress-info">';
+            hh += '<div class="bar" id="progressPercentBar" style="width: 1%;"></div>';
+            hh += '</div>';
+            $('#uploadProgress').html(hh);
 
         // progress event
         xhr.upload.addEventListener("progress", function (e) {
             if (e.lengthComputable) {
                 var currentState = (e.loaded / e.total) * 100;
-                console.log(currentState);
+                $('#progressPercentBar').width(currentState+'%');
             }
         }, false);
 
@@ -578,6 +591,7 @@ $('#filebinLink').on("click", function (event) {
                     $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
                 }
             });
+            $('#uploadProgress').html('');
         }, false);
 
         // Loop through the FileList
@@ -600,7 +614,7 @@ $('#newEventLink').on("click", function (event) {
     event.preventDefault();
     var h = '<form>';
     h += '<fieldset>';
-    h += '<legend>New Event</legend>';
+    h += '<h3>New Event</h3>';
     h += '<input id="newEventName" type="text" placeholder="Event Name">';
     h += '<span class="help-block">Event data.</span>';
     h += '<textarea id="newEventData" style="width: 95%; height: 500px;"></textarea>';

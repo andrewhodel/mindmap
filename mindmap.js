@@ -1511,13 +1511,20 @@ function processFile(filepath, name, cb) {
         cb(err);
     });
 
-    // call fileToDb for filepath
-    fileToDb(fileId, filepath, false, function (err) {
-        // call thumbs
-        if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
+
+    // call thumbs
+    if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
+        // call fileToDb for filepath
+        fileToDb(fileId, filepath, false, function (err) {
+            // generate image thumbnails
             imageThumbs(fileId, filepath);
-        }
-    });
+        });
+    } else if (m.indexOf('video') == 0) {
+    	fileToDb(fileId, filepath, false, function (err) {
+        // video thumbnails
+        videoThumbs(fileId, filepath);
+     });
+    }
 
 }
 
@@ -1549,13 +1556,13 @@ function imageThumbs(fileId, filepath) {
                 });
             },
             function (callback) {
-                // create 600px thumbnail
+                // create 1000px thumbnail
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
-                var thisname = dirname + '/600px_' + basename;
+                var thisname = dirname + '/1000px_' + basename;
                 // create mid thumb
-                exec('convert ' + filepath + ' -resize 600x600 ' + thisname, function (error, stdout, stderr) {
-                    console.log('convert ' + filepath + ' -resize 600x600 ' + thisname);
+                exec('convert ' + filepath + ' -resize 1000x1000 ' + thisname, function (error, stdout, stderr) {
+                    console.log('convert ' + filepath + ' -resize 1000x1000 ' + thisname);
                     console.log(stdout);
                     console.log(stderr);
                     callback(null, thisname);
@@ -1566,7 +1573,7 @@ function imageThumbs(fileId, filepath) {
         function (err, results) {
 
             if (!err) {
-                // this means image processing was done, add the thumbs to the filebin entries
+                // this means image processing was done, add the thumbs to the filebin entry
                 var u = {};
                 u.imagesize = results[0];
 
@@ -1580,13 +1587,67 @@ function imageThumbs(fileId, filepath) {
                 };
                 fileToDb(ofid, results[1], true, function (err) {});
 
-                // 600 px
+                // 1000 px
                 var sfid = new mongodb.ObjectID();
                 u.thumbs[1] = {
-                    imagesize: '600x600',
+                    imagesize: '1000x1000',
                     fileId: sfid
                 };
                 fileToDb(sfid, results[2], true, function (err) {});
+
+                // update db with size and thumbnails
+                db.collection('filebin', function (err, collection) {
+                    collection.update({
+                        'fileId': fileId
+                    }, {
+                        '$set': u
+                    }, {
+                        'safe': true
+                    }, function (err, docs) {});
+                });
+
+            }
+
+            // delete the source filepath no matter what
+            fs.unlink(filepath, function (err) {});
+
+        });
+
+}
+
+// function to generate video thumbnails
+function videoThumbs(fileId, filepath) {
+
+    async.series([
+
+            function (callback) {
+                // create 100 px thumbnail
+                var basename = path.basename(filepath);
+                var dirname = path.dirname(filepath);
+                var thisname = dirname + '/1000px_' + basename;
+                // create mid thumb
+                exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y '+thisname, function (error, stdout, stderr) {
+                    console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y '+thisname);
+                    console.log(stdout);
+                    console.log(stderr);
+                    callback(null, thisname);
+                });
+            },
+
+        ],
+        function (err, results) {
+
+            if (!err) {
+                // this means video processing was done, add the thumb to the filebin entry
+                var u = {};
+
+                // 100 px
+                var ofid = new mongodb.ObjectID();
+                u.videoThumb = {
+                    imagesize: '100x100',
+                    fileId: ofid
+                };
+                fileToDb(ofid, results[0], true, function (err) {});
 
                 // update db with size and thumbnails
                 db.collection('filebin', function (err, collection) {
