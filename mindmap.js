@@ -1011,15 +1011,15 @@ router.del('/file').bind(function (req, res, params) {
 
                     // remove thumbs from gridstore
                     if (results[2][0].thumbs) {
-                    	for (var i=0; i<results[2][0].thumbs.length; i++) {
-                    		mongodb.GridStore.unlink(db, results[2][0].thumbs[i].fileId, function(err, gridStore) {
-                    			console.log('gridstore removing thumb');
-                       });
-                    	}
+                        for (var i = 0; i < results[2][0].thumbs.length; i++) {
+                            mongodb.GridStore.unlink(db, results[2][0].thumbs[i].fileId, function (err, gridStore) {
+                                console.log('gridstore removing thumb');
+                            });
+                        }
                     }
                     // remove file from gridstore
-                    mongodb.GridStore.unlink(db, new mongodb.ObjectID(params.fileId), function(err, gridStore) {
-                    	console.log('gridstore removing file');
+                    mongodb.GridStore.unlink(db, new mongodb.ObjectID(params.fileId), function (err, gridStore) {
+                        console.log('gridstore removing file');
                     });
 
                 }
@@ -1052,23 +1052,25 @@ router.get('/filebin').bind(function (req, res, params) {
         async.series([
 
             function (callback) {
-            	if (params.event) {
-                if (isValidMongoId(params.event)) {
-                    callback(null, '');
+                if (params.event) {
+                    if (isValidMongoId(params.event)) {
+                        callback(null, '');
+                    } else {
+                        callback('invalid id', '');
+                    }
                 } else {
-                    callback('invalid id', '');
+                    callback(null, '');
                 }
-             } else {
-             	callback(null, '');
-             }
             },
             function (callback) {
                 // get filebin
-                var i = {event:null};
+                var i = {
+                    event: null
+                };
                 if (params.event) {
-                if (isValidMongoId(params.event)) {
-                    i.event = new mongodb.ObjectID(params.event);
-                }
+                    if (isValidMongoId(params.event)) {
+                        i.event = new mongodb.ObjectID(params.event);
+                    }
                 }
 
                 db.collection('filebin', function (err, collection) {
@@ -1359,7 +1361,7 @@ RESPONSE CODES
 500 - Error
 	returns nothing
 */
-router.post('/fetch').bind(function (req, res, params) {
+router.post('/REWRITEfetch').bind(function (req, res, params) {
 
     if (auth(params.username, params.password, res)) {
 
@@ -1389,58 +1391,64 @@ router.post('/fetch').bind(function (req, res, params) {
                 // start download
                 var filestream = fs.createWriteStream(tmp);
                 var urlp = url.parse(params.url);
-                var req = require('follow-redirects').http.request({hostname:urlp.hostname,path:urlp.path,method:urlp.method,port:urlp.port,headers:{
-                	'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
-                	}}, function (resp) {
-                		if (resp.statusCode == 200) {
-                			
-                // add filebin entry for mongo as uploaded
-                db.collection('filebin', function (err, collection) {
-                    var i = {
-                        'name': params.url,
-                        'fileId': fileId,
-                        'exception': 'fetching',
-                        'created': Math.round((new Date()).getTime() / 1000)
-                    };
-                    collection.insert(i, function (err, docs) {});
-                });                
-                // send back success	
-                res.send(200, {}, {
-                    'success': 1
+                var req = require('follow-redirects').http.request({
+                    hostname: urlp.hostname,
+                    path: urlp.path,
+                    method: urlp.method,
+                    port: urlp.port,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
+                    }
+                }, function (resp) {
+                    if (resp.statusCode == 200) {
+
+                        // add filebin entry for mongo as uploaded
+                        db.collection('filebin', function (err, collection) {
+                            var i = {
+                                'name': params.url,
+                                'fileId': fileId,
+                                'exception': 'fetching',
+                                'created': Math.round((new Date()).getTime() / 1000)
+                            };
+                            collection.insert(i, function (err, docs) {});
+                        });
+                        // send back success	
+                        res.send(200, {}, {
+                            'success': 1
+                        });
+
+                        // write data to file
+                        resp.on('data', function (data) {
+                            filestream.write(data);
+                            //console.log(data.length);
+                        });
+
+                        resp.on('error', function (err) {
+                            console.log(err);
+                            // error, need to update filebin entry
+                        });
+
+                        resp.on('end', function () {
+                            processFile(fileId, tmp, function (err) {});
+                        });
+                    } else {
+                        // invalid fetch url
+                        console.log('invalid fetch url');
+                        res.send(500, {}, {
+                            'error': 'invalid fetch url'
+                        });
+                    }
                 });
-                			
-                			// write data to file
-                    resp.on('data', function(data) {
-                    	filestream.write(data);
-                    	//console.log(data.length);
-                    });
-                    
-                    resp.on('error', function(err) {
-                    	console.log(err);
-                    	// error, need to update filebin entry
-                    });
-                    
-                    resp.on('end', function() {
-                    		processFile(fileId, tmp, function (err) {});
-                    });
-                  } else {
-                  	// invalid fetch url
-                  	console.log('invalid fetch url');
-                res.send(500, {}, {
-                    'error': 'invalid fetch url'
-                });
-                  }
-                });
-                
-                filestream.on('error', function(err) {
-                	console.log(err);
-                	// error, need to update filebin entry
+
+                filestream.on('error', function (err) {
+                    console.log(err);
+                    // error, need to update filebin entry
                 })
-                
-                req.on('error', function(err) {
-                	console.log(err);
+
+                req.on('error', function (err) {
+                    console.log(err);
                 });
-                
+
                 req.end();
 
             }
@@ -1451,10 +1459,12 @@ router.post('/fetch').bind(function (req, res, params) {
 });
 
 // function to load a fs file into gridstore
-function fileToDb(fileId, filepath) {
+function fileToDb(fileId, filepath, deleteFile, cb) {
 
     // Open a new file
-    var gridStore = new mongodb.GridStore(db, fileId, 'w', {'content_type':mime.lookup(filepath)});
+    var gridStore = new mongodb.GridStore(db, fileId, 'w', {
+        'content_type': mime.lookup(filepath)
+    });
 
     // Open the new file
     gridStore.open(function (err, gridStore) {
@@ -1467,112 +1477,132 @@ function fileToDb(fileId, filepath) {
         gridStore.writeFile(filepath, function (err, doc) {
             console.log('added to gridfs ' + fileId);
 
-            // delete source file
-            fs.unlink(filepath, function (err) {});
+            if (deleteFile === true) {
+                // delete source file
+                fs.unlink(filepath, function (err) {});
+            }
+            cb(err);
 
         });
     });
 }
 
 // function to process a file
-function processFile(fileId, filepath, filename) {
+function processFile(filepath, name, cb) {
+
+    var fileId = new mongodb.ObjectID();
+
+    var m = mime.lookup(filepath);
+
+    var filestats = fs.statSync(filepath);
+
+    var u = {
+        mimetype: m,
+        size: filestats.size,
+        name: name,
+        fileId: fileId,
+        created: Math.round((new Date()).getTime() / 1000)
+    };
+
+    // update db with size and thumbnails
+    db.collection('filebin', function (err, collection) {
+        collection.insert(u, function (err, docs) {});
+        // callback
+        cb(err);
+    });
+
+    // call fileToDb for filepath
+    fileToDb(fileId, filepath, false, function (err) {
+        // call thumbs
+        if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
+            imageThumbs(fileId, filepath);
+        }
+    });
+
+}
+
+// function to generate image thumbnails
+function imageThumbs(fileId, filepath) {
+
     async.series([
 
-            // first process
             function (callback) {
-            	var m = mime.lookup(filepath);
-                if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
-                    // allow to proceed
-                    callback(null);
-                } else {
-                	// no images
-                    callback(true);
-                }
-            },
-            function (callback) {
+                // get root image size, why not
                 exec('identify ' + filepath + ' | cut -d" " -f 3', function (error, stdout, stderr) {
-                	console.log('identify ' + filepath + ' | cut -d" " -f 3');
-                	console.log(stdout);
-                	console.log(stderr);
-                	
+                    console.log('identify ' + filepath + ' | cut -d" " -f 3');
+                    console.log(stdout);
+                    console.log(stderr);
                     callback(null, stdout);
                 });
             },
             function (callback) {
+                // create 100px thumbnail
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/100px_' + basename;
                 // create small thumb
                 exec('convert ' + filepath + ' -resize 100x100 ' + thisname, function (error, stdout, stderr) {
-                	console.log('convert ' + filepath + ' -resize 100x100 ' + thisname);
-                	console.log(stdout);
-                	console.log(stderr);
+                    console.log('convert ' + filepath + ' -resize 100x100 ' + thisname);
+                    console.log(stdout);
+                    console.log(stderr);
                     callback(null, thisname);
                 });
             },
             function (callback) {
+                // create 600px thumbnail
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/600px_' + basename;
                 // create mid thumb
                 exec('convert ' + filepath + ' -resize 600x600 ' + thisname, function (error, stdout, stderr) {
-                	console.log('convert ' + filepath + ' -resize 600x600 ' + thisname);
-                	console.log(stdout);
-                	console.log(stderr);
+                    console.log('convert ' + filepath + ' -resize 600x600 ' + thisname);
+                    console.log(stdout);
+                    console.log(stderr);
                     callback(null, thisname);
                 });
             },
 
         ],
         function (err, results) {
-        	
-        	var filestats = fs.statSync(filepath);
-
-            // write null to exception
-            var u = {
-                exception: undefined,
-                mimetype : mime.lookup(filepath),
-                size : filestats.size
-            };
 
             if (!err) {
                 // this means image processing was done, add the thumbs to the filebin entries
+                var u = {};
+                u.imagesize = results[0];
+
                 u.thumbs = [];
 
                 // 100 px
                 var ofid = new mongodb.ObjectID();
                 u.thumbs[0] = {
-                    size: '100x100',
+                    imagesize: '100x100',
                     fileId: ofid
                 };
-                fileToDb(ofid, results[2]);
+                fileToDb(ofid, results[1], true, function (err) {});
 
                 // 600 px
                 var sfid = new mongodb.ObjectID();
                 u.thumbs[1] = {
-                    size: '600x600',
+                    imagesize: '600x600',
                     fileId: sfid
                 };
-                fileToDb(sfid, results[3]);
+                fileToDb(sfid, results[2], true, function (err) {});
 
-                u.imagesize = results[1];
+                // update db with size and thumbnails
+                db.collection('filebin', function (err, collection) {
+                    collection.update({
+                        'fileId': fileId
+                    }, {
+                        '$set': u
+                    }, {
+                        'safe': true
+                    }, function (err, docs) {});
+                });
+
             }
-            
-            // update db with size and thumbnails
-            db.collection('filebin', function (err, collection) {
 
-                collection.update({
-                    'fileId': fileId
-                }, {
-                    '$set': u
-                }, {
-                    'safe': true
-                }, function (err, docs) {});
-
-            });
-
-            // call fileToDb for filepath
-            fileToDb(fileId, filepath);
+            // delete the source filepath no matter what
+            fs.unlink(filepath, function (err) {});
 
         });
 
@@ -1583,8 +1613,8 @@ db.open(function (err, db) {
     if (db) {
 
         http.createServer(function (request, response) {
-        	
-        	console.log('###### ' + request.method + ' ' + request.url + " ######\n");
+
+            console.log('###### ' + request.method + ' ' + request.url + " ######\n");
 
             if (request.method == 'OPTIONS') {
 
@@ -1612,42 +1642,42 @@ db.open(function (err, db) {
                         response.end("invalid request: " + err);
                     });
 
-                    form.on('close', function () {
-                    });
+                    form.on('close', function () {});
+
+                    var multipartybug = [];
 
                     form.on('file', function (name, file) {
+                        multipartybug.push(file);
                         // need to move this to form.parse, once form.parse returns more than 1 file
-                        // Our file ID
-                        var fileId = new mongodb.ObjectID();
 
-                        // add filebin entry for mongo as uploaded
-                        db.collection('filebin', function (err, collection) {
-                            var i = {
-                                'name': file.originalFilename,
-                                'fileId': fileId,
-                                'exception': 'uploaded',
-                                'created': Math.round((new Date()).getTime() / 1000)
-                            };
-                            collection.insert(i, function (err, docs) {});
-                        });
-                        // process file
-                        processFile(fileId, file.path, function (err) {
 
-                        });
                     });
 
                     form.parse(request, function (err, fields, files) {
-                    	if ('username' == conf.username && bcrypt.compareSync('password', conf.password)) {
-                        response.statusCode = 200;
-                        response.setHeader("Content-Type", "text/html");
-                        response.setHeader('Access-Control-Allow-Origin', '*');
-                        response.end('success');
-                     } else {
-                     	  response.statusCode = 401;
-                        response.setHeader("Content-Type", "text/html");
-                        response.setHeader('Access-Control-Allow-Origin', '*');
-                        response.end('error');
-                     }
+                        if ('username' == conf.username && bcrypt.compareSync('password', conf.password)) {
+                            // process files
+                            function iterate(file, cb) {
+                                // runs once for each file
+                                processFile(file.path, file.originalFilename, function (err) {
+                                    cb(err, null);
+                                });
+                            }
+
+                            async.map(multipartybug, iterate, function (err, results) {
+
+                                response.statusCode = 200;
+                                response.setHeader("Content-Type", "text/html");
+                                response.setHeader('Access-Control-Allow-Origin', '*');
+                                response.end('success');
+
+                            });
+
+                        } else {
+                            response.statusCode = 401;
+                            response.setHeader("Content-Type", "text/html");
+                            response.setHeader('Access-Control-Allow-Origin', '*');
+                            response.end('error');
+                        }
                     });
 
                 } else if (up.pathname === '/file' && request.method === 'GET') {
@@ -1881,6 +1911,7 @@ db.open(function (err, db) {
         }
 
         async.waterfall([
+
             function (callback) {
 
                 db.collection('v', function (err, collection) {
@@ -1927,7 +1958,7 @@ db.open(function (err, db) {
         // get config settings from db
         db.collection('c', function (err, collection) {
             collection.find({}).toArray(function (err, docs) {
-                if (docs.length>0) {
+                if (docs.length > 0) {
                     // this database has settings
                     conf.username = docs[0].username;
                     conf.password = bcrypt.hashSync(docs[0].password, 8);
