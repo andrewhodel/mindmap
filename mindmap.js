@@ -5,6 +5,7 @@ var async = require('async');
 var bcrypt = require('bcrypt');
 var fs = require('fs');
 var url = require('url');
+var http = require('http');
 var urlize = require('./lib/urlize.js').urlize;
 var md = require("node-markdown").Markdown;
 var multiparty = require('multiparty');
@@ -935,11 +936,110 @@ router.del('/event').bind(function (req, res, params) {
 });
 
 /*
+DELETE /file - delete a file
+file must have no event
+
+AUTH REQUIRED
+
+REQUEST PARAMS
+fileId* - STR id of the file
+
+RESPONSE CODES
+200 - Valid
+	returns json document admin
+500 - Error
+	returns error
+*/
+router.del('/file').bind(function (req, res, params) {
+
+    if (auth(params.username, params.password, res)) {
+
+        async.series([
+
+            function (callback) {
+                checkParams(params, ['fileId'], function (err) {
+                    callback(err, '');
+                });
+            },
+            function (callback) {
+                if (isValidMongoId(params.fileId)) {
+                    callback(null, '');
+                } else {
+                    callback('invalid fileId', '');
+                }
+            },
+            function (callback) {
+                // get the file from filebin
+                db.collection('filebin', function (err, collection) {
+                    collection.find({
+                        'fileId': new mongodb.ObjectID(params.fileId)
+                    }).toArray(function (err, docs) {
+                        callback(err, docs)
+                    });
+                });
+            }
+
+        ], function (err, results) {
+
+            if (err) {
+                res.send(500, {}, {
+                    'error': err
+                });
+            } else {
+
+                if (results[2][0].length < 1) {
+                    // no file, error
+                    res.send(500, {}, {
+                        'error': 'no file exists'
+                    });
+                } else if (results[2][0].event != '' && results[2][0].event != undefined) {
+                    console.log('cannot delete file, event = ' + results[2][0].event)
+                    res.send(500, {}, {
+                        'error': 'cannot delete file, event = ' + results[2][0].event
+                    });
+                } else {
+                    // remove filebin entry
+                    db.collection('filebin', function (err, collection) {
+                        collection.remove({
+                            'fileId': new mongodb.ObjectID(params.fileId)
+                        }, function (err, result) {
+                            res.send({
+                                'success': 1
+                            });
+                        });
+                    });
+
+                    // remove thumbs from gridstore
+                    if (results[2][0].thumbs) {
+                    	for (var i=0; i<results[2][0].thumbs.length; i++) {
+                    		mongodb.GridStore.unlink(db, results[2][0].thumbs[i].fileId, function(err, gridStore) {
+                    			console.log('gridstore removing thumb');
+                    			console.log(err);
+                       });
+                    	}
+                    }
+                    // remove file from gridstore
+                    mongodb.GridStore.unlink(db, new mongodb.ObjectID(params.fileId), function(err, gridStore) {
+                    	console.log('gridstore removing file');
+                    	console.log(err);
+                    });
+
+                }
+            }
+
+        });
+
+    }
+
+});
+
+/*
 GET /filebin - list all files in filebin
 
 AUTH REQUIRED
 
 REQUEST PARAMS
+event - pass an event id if you want just files for one event
 
 RESPONSE CODES
 200 - Valid Object
@@ -954,12 +1054,27 @@ router.get('/filebin').bind(function (req, res, params) {
         async.series([
 
             function (callback) {
+            	if (params.event) {
+                if (isValidMongoId(params.event)) {
+                    callback(null, '');
+                } else {
+                    callback('invalid id', '');
+                }
+             } else {
+             	callback(null, '');
+             }
+            },
+            function (callback) {
                 // get filebin
+                var i = {event:null};
+                if (params.event) {
+                if (isValidMongoId(params.event)) {
+                    i.event = new mongodb.ObjectID(params.event);
+                }
+                }
 
                 db.collection('filebin', function (err, collection) {
-                    collection.find({
-                        'event': null
-                    }).sort({
+                    collection.find(i).sort({
                         'created': -1
                     }).toArray(function (err, docs) {
                         // place the data in results[2]
@@ -977,7 +1092,7 @@ router.get('/filebin').bind(function (req, res, params) {
             } else {
                 res.send({
                     'success': 1,
-                    'filebin': results[0]
+                    'filebin': results[1]
                 });
             }
         });
@@ -1008,7 +1123,7 @@ router.post('/fileEvent').bind(function (req, res, params) {
         async.series([
 
             function (callback) {
-                checkParams(params, ['id', 'v'], function (err) {
+                checkParams(params, ['id', 'f'], function (err) {
                     callback(err, '');
                 });
             },
@@ -1020,30 +1135,20 @@ router.post('/fileEvent').bind(function (req, res, params) {
                 }
             },
             function (callback) {
+                if (isValidMongoId(params.f)) {
+                    callback(null, '');
+                } else {
+                    callback('invalid f', '');
+                }
+            },
+            function (callback) {
                 // make sure event exists
                 db.collection('e', function (err, collection) {
                     collection.find({
                         '_id': new mongodb.ObjectID(params.id)
                     }).toArray(function (err, docs) {
                         if (docs.length > 0) {
-                            if (docs[0].volumes) {
-                                var exists = false;
-                                // check that this volume is not there
-                                for (var i = 0; i < docs[0].volumes.length; i++) {
-                                    if (docs[0].volumes[i] == params.v) {
-                                        // exists
-                                        exists = true;
-                                    }
-                                }
-                                if (exists) {
-                                    callback('volume already exists for event', '');
-                                } else {
-                                    callback(null, docs);
-                                }
-                            } else {
-                                // event has no volumes, succeed
-                                callback(null, 'novolumes');
-                            }
+                            callback(null);
                         } else {
                             callback('event not found with _id ' + params.id, '');
                         }
@@ -1051,38 +1156,48 @@ router.post('/fileEvent').bind(function (req, res, params) {
                 });
             },
             function (callback) {
-                // add event to volume
+                // make sure file exists
+                db.collection('filebin', function (err, collection) {
+                    collection.find({
+                        'fileId': new mongodb.ObjectID(params.f)
+                    }).toArray(function (err, docs) {
+                        if (docs.length > 0) {
+                            callback(null);
+                        } else {
+                            callback('file not found with fileId ' + params.f, '');
+                        }
+                    });
+                });
+            },
+            function (callback) {
+                // add file to event
                 db.collection('e', function (err, collection) {
                     collection.update({
                         '_id': new mongodb.ObjectID(params.id)
                     }, {
                         '$push': {
-                            'volumes': params.v
+                            'files': new mongodb.ObjectID(params.f)
                         }
                     }, {
                         'new': true
                     }, function (err, docs) {
-
                         callback(err, '');
                     });
                 });
             },
             function (callback) {
-                // add 1 to volume and lastModified
-
-                db.collection('v', function (err, collection) {
+                // add event to file
+                db.collection('filebin', function (err, collection) {
                     collection.update({
-                        'name': params.v
+                        'fileId': new mongodb.ObjectID(params.f)
                     }, {
-                        '$inc': {
-                            'count': 1
-                        },
                         '$set': {
-                            'ts': Math.round((new Date()).getTime() / 1000)
+                            'event': new mongodb.ObjectID(params.id)
                         }
                     }, {
-                        'upsert': true
+                        'new': true
                     }, function (err, docs) {
+
                         callback(err, '');
                     });
                 });
@@ -1092,41 +1207,6 @@ router.post('/fileEvent').bind(function (req, res, params) {
         ], function (err, results) {
 
             //console.log(results);
-            if (results[2] != 'novolumes') {
-                for (var i = 0; i < results[2][0].volumes.length; i++) {
-
-                    if (results[2][0].volumes[i] != params.v) {
-                        // for each other volume on this event we must add 1 to the connection for params.v
-                        db.collection('v', function (err, collection) {
-                            var variable = 'connections.' + results[2][0].volumes[i];
-                            var action = {};
-                            action[variable] = 1;
-                            collection.update({
-                                'name': params.v
-                            }, {
-                                '$inc': action
-                            }, {
-                                'safe': true
-                            }, function (err, docs) {
-                                console.log(err);
-                            });
-                        });
-
-                        // as well as add 1 to params.v for each other volume
-                        db.collection('v', function (err, collection) {
-                            var variable = 'connections.' + params.v;
-                            var action = {};
-                            action[variable] = 1;
-                            collection.update({
-                                'name': results[2][0].volumes[i]
-                            }, {
-                                '$inc': action
-                            }, {}, function (err, docs) {});
-                        });
-                    }
-
-                }
-            }
 
             if (err) {
                 res.send(500, {}, {
@@ -1165,7 +1245,7 @@ router.del('/fileEvent').bind(function (req, res, params) {
         async.series([
 
             function (callback) {
-                checkParams(params, ['id', 'v'], function (err) {
+                checkParams(params, ['id', 'f'], function (err) {
                     callback(err, '');
                 });
             },
@@ -1177,13 +1257,20 @@ router.del('/fileEvent').bind(function (req, res, params) {
                 }
             },
             function (callback) {
+                if (isValidMongoId(params.f)) {
+                    callback(null, '');
+                } else {
+                    callback('invalid f', '');
+                }
+            },
+            function (callback) {
                 // make sure event exists
                 db.collection('e', function (err, collection) {
                     collection.find({
                         '_id': new mongodb.ObjectID(params.id)
                     }).toArray(function (err, docs) {
                         if (docs.length > 0) {
-                            callback(null, docs);
+                            callback(null);
                         } else {
                             callback('event not found with _id ' + params.id, '');
                         }
@@ -1191,40 +1278,48 @@ router.del('/fileEvent').bind(function (req, res, params) {
                 });
             },
             function (callback) {
-                // remove event from volume
+                // make sure file exists
+                db.collection('filebin', function (err, collection) {
+                    collection.find({
+                        'fileId': new mongodb.ObjectID(params.f)
+                    }).toArray(function (err, docs) {
+                        if (docs.length > 0) {
+                            callback(null);
+                        } else {
+                            callback('file not found with fileId ' + params.f, '');
+                        }
+                    });
+                });
+            },
+            function (callback) {
+                // remove file from event
                 db.collection('e', function (err, collection) {
-
                     collection.update({
                         '_id': new mongodb.ObjectID(params.id)
                     }, {
                         '$pull': {
-                            'volumes': params.v
+                            'files': new mongodb.ObjectID(params.f)
                         }
                     }, {
                         'safe': true
                     }, function (err, docs) {
                         callback(err, '');
                     });
-
                 });
             },
             function (callback) {
-
-                // subtract 1 from volume and lastModified
-                db.collection('v', function (err, collection) {
+                // remove event from file
+                db.collection('filebin', function (err, collection) {
                     collection.update({
-                        'name': params.v
+                        'fileId': new mongodb.ObjectID(params.f)
                     }, {
-                        '$inc': {
-                            'count': -1
-                        },
-                        '$set': {
-                            'ts': Math.round((new Date()).getTime() / 1000)
+                        '$unset': {
+                            'event': ''
                         }
                     }, {
-                        'safe': true,
-                        'upsert': true
+                        'safe': true
                     }, function (err, docs) {
+
                         callback(err, '');
                     });
                 });
@@ -1234,39 +1329,6 @@ router.del('/fileEvent').bind(function (req, res, params) {
         ], function (err, results) {
 
             //console.log(results);
-
-            for (var i = 0; i < results[2][0].volumes.length; i++) {
-
-                if (results[2][0].volumes[i] != params.v) {
-                    // for each other volume on this event we must subtract 1 to the connection for params.v
-                    db.collection('v', function (err, collection) {
-                        var variable = 'connections.' + results[2][0].volumes[i];
-                        var action = {};
-                        action[variable] = -1;
-                        collection.update({
-                            'name': params.v
-                        }, {
-                            '$inc': action
-                        }, {
-                            'safe': true
-                        }, function (err, docs) {
-                            console.log(err);
-                        });
-                    });
-                    // as well as subtract 1 to params.v for each other volume
-                    db.collection('v', function (err, collection) {
-                        var variable = 'connections.' + params.v;
-                        var action = {};
-                        action[variable] = -1;
-                        collection.update({
-                            'name': results[2][0].volumes[i]
-                        }, {
-                            '$inc': action
-                        }, {}, function (err, docs) {});
-                    });
-                }
-
-            }
 
             if (err) {
                 res.send(500, {}, {
@@ -1318,30 +1380,60 @@ router.post('/fetch').bind(function (req, res, params) {
                     'error': err
                 });
             } else {
-                db.collection('e', function (err, collection) {
+                res.send(200, {}, {
+                    'success': 1
+                });
+                // Our file ID
+                var fileId = new mongodb.ObjectID();
+
+                console.log('fetching file ' + params.url);
+
+                // add filebin entry for mongo as uploaded
+                db.collection('filebin', function (err, collection) {
                     var i = {
-                        'title': params.title,
+                        'name': params.url,
+                        'fileId': fileId,
+                        'exception': 'processing',
                         'created': Math.round((new Date()).getTime() / 1000)
                     };
-                    collection.insert(i, function (err, docs) {
-                        if (err) {
-                            res.send(500, {}, {
-                                'error': err
-                            });
-                        } else {
-                            res.send({
-                                'success': 1,
-                                'event': docs[0]
-                            });
-                            db.collection('ed', function (err, collection) {
-                                collection.insert({
-                                    'eId': docs[0]._id,
-                                    'd': params.d
-                                }, function (err, docs) {});
-                            });
-                        }
+                    collection.insert(i, function (err, docs) {});
+                });
+
+                var s = params.url.split('/');
+                var tmp = "/tmp/" + fileId + '-' + s[s.length - 1];
+                // start download
+                var filestream = fs.createWriteStream(tmp);
+                var urlp = url.parse(params.url);
+                var req = require('follow-redirects').http.request({hostname:urlp.hostname,path:urlp.path,method:urlp.method,port:urlp.port,headers:{
+                	'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
+                	}}, function (resp) {
+                		console.log(resp);
+                		var dlprogress = 0;
+                    resp.on('data', function(data) {
+                    	filestream.write(data);
+                    	dlprogress += data.length;
+                    	console.log(dlprogress);
+                    });
+                    
+                    resp.on('error', function(err) {
+                    	console.log(err);
+                    });
+                    
+                    resp.on('end', function() {
+                    		processFile(fileId, tmp, function (err) {});
                     });
                 });
+                
+                filestream.on('error', function(err) {
+                	console.log(err);
+                })
+                
+                req.on('error', function(err) {
+                	console.log(err);
+                });
+                
+                req.end();
+
             }
         });
 
@@ -1350,11 +1442,10 @@ router.post('/fetch').bind(function (req, res, params) {
 });
 
 // function to load a fs file into gridstore
-
 function fileToDb(fileId, filepath) {
 
     // Open a new file
-    var gridStore = new mongodb.GridStore(db, fileId, 'w');
+    var gridStore = new mongodb.GridStore(db, fileId, 'w', {'content_type':mime.lookup(filepath)});
 
     // Open the new file
     gridStore.open(function (err, gridStore) {
@@ -1375,21 +1466,26 @@ function fileToDb(fileId, filepath) {
 }
 
 // function to process a file
-
 function processFile(fileId, filepath, filename) {
     async.series([
 
             // first process
             function (callback) {
-                if (mime.lookup(filepath).indexOf('image') != -1) {
-                    // call error to skip image generation
+            	var m = mime.lookup(filepath);
+                if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
+                    // allow to proceed
                     callback(null);
                 } else {
+                	// no images
                     callback(true);
                 }
             },
             function (callback) {
                 exec('identify ' + filepath + ' | cut -d" " -f 3', function (error, stdout, stderr) {
+                	console.log('identify ' + filepath + ' | cut -d" " -f 3');
+                	console.log(stdout);
+                	console.log(stderr);
+                	
                     callback(null, stdout);
                 });
             },
@@ -1399,6 +1495,9 @@ function processFile(fileId, filepath, filename) {
                 var thisname = dirname + '/100px_' + basename;
                 // create small thumb
                 exec('convert ' + filepath + ' -resize 100x100 ' + thisname, function (error, stdout, stderr) {
+                	console.log('convert ' + filepath + ' -resize 100x100 ' + thisname);
+                	console.log(stdout);
+                	console.log(stderr);
                     callback(null, thisname);
                 });
             },
@@ -1408,6 +1507,9 @@ function processFile(fileId, filepath, filename) {
                 var thisname = dirname + '/600px_' + basename;
                 // create mid thumb
                 exec('convert ' + filepath + ' -resize 600x600 ' + thisname, function (error, stdout, stderr) {
+                	console.log('convert ' + filepath + ' -resize 600x600 ' + thisname);
+                	console.log(stdout);
+                	console.log(stderr);
                     callback(null, thisname);
                 });
             },
@@ -1468,7 +1570,7 @@ function processFile(fileId, filepath, filename) {
 db.open(function (err, db) {
     if (db) {
 
-        require('http').createServer(function (request, response) {
+        http.createServer(function (request, response) {
         	
         	console.log('###### ' + request.method + ' ' + request.url + " ######\n");
 
@@ -1517,7 +1619,7 @@ db.open(function (err, db) {
                             collection.insert(i, function (err, docs) {});
                         });
                         // process file
-                        processFile(fileId, file.path, file.originalFilename, function (err) {
+                        processFile(fileId, file.path, function (err) {
 
                         });
                     });
@@ -1538,17 +1640,17 @@ db.open(function (err, db) {
 
                 } else if (up.pathname === '/file' && request.method === 'GET') {
                     /*
-GET /file - get a file
-
-REQUEST PARAMS
-fileId*
-
-RESPONSE CODES
-200 - Valid Object
-	returns json document object
-500 - Error
-	returns error
-*/
+													GET /file - get a file
+													
+													REQUEST PARAMS
+													fileId*
+													
+													RESPONSE CODES
+													200 - Valid Object
+														returns json document object
+													500 - Error
+														returns error
+													*/
 
                     async.series([
 
@@ -1587,8 +1689,10 @@ RESPONSE CODES
                             // need to get file and return it here
                             var gridStore = new mongodb.GridStore(db, new mongodb.ObjectID(up.query.fileId), "r");
                             gridStore.open(function (err, gridStore) {
+                            	console.log(gridStore);
 
                                 var stream = gridStore.stream(true);
+                                response.setHeader("Content-Type", gridStore.contentType);
                                 stream.pipe(response);
 
                             });
@@ -1598,7 +1702,6 @@ RESPONSE CODES
                 } else {
 
                     // this is an API request
-
                     var body = "";
                     request.addListener('data', function (chunk) {
                         body += chunk
@@ -1622,7 +1725,6 @@ RESPONSE CODES
         console.log('listening on port 8000');
 
         // local memory update loop
-
         function ml() {
 
         }
@@ -1720,6 +1822,13 @@ RESPONSE CODES
 
         // filebin
         db.ensureIndex('filebin', 'event', {
+            'unique': false
+        }, function (err, name) {
+            if (err) {
+                console.log(err)
+            }
+        });
+        db.ensureIndex('filebin', 'fileId', {
             'unique': false
         }, function (err, name) {
             if (err) {

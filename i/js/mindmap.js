@@ -96,21 +96,29 @@ function showEvents(volume) {
         'sort': 'created',
         'volumes': volume
     }, function (err, data) {
-        console.log(data.events);
         for (var i = 0; i < data.events.length; i++) {
 
             $("#mainWindow").append(eventObj(data.events[i]));
 
             // bind once
             $('#eventItem' + data.events[i]._id).one('inview', function (event, isInView, visiblePartX, visiblePartY) {
+                console.log(this.d);
                 if (isInView) {
                     // element is now visible in the viewport
-                    var tid = this.id.slice(9);
+                    var tid = this.d._id;
                     //console.log(tid);
 
                     eventData(tid, true, function (data) {
                         $('#eventText' + tid).html(data.eventData.d);
                     });
+
+                    if (this.d.files.length > 0 && this.d.files !== undefined) {
+                        loadFilebinFiles(tid, function (data) {
+                            for (var i = 0; i < data.length; i++) {
+                                $('#eventFiles' + tid).append(fileIcon(data[i]));
+                            }
+                        });
+                    }
 
                     if (visiblePartY == 'top') {
                         // top part of element is visible
@@ -122,7 +130,9 @@ function showEvents(volume) {
                 } else {
                     // element has gone out of viewport
                 }
-            });
+            }.bind({
+                d: data.events[i]
+            }));
 
         }
     });
@@ -217,11 +227,15 @@ function eventObj(obj) {
 
     h += '<button style="margin-left: 6px; float: right;" class="btn btn-danger" type="button" onClick="deleteEvent(\'' + obj._id + '\'); return false;">delete</button>';
     h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="editEvent(\'' + obj._id + '\'); return false;">edit</button>';
+    h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="addFilesToEvent(\'' + obj._id + '\'); return false;">add files</button>';
     h += '<div class="input-append eventAddVolume clearfix">';
     h += '<input placeholder="add volume" class="span2" id="addVolumeText' + obj._id + '" type="text">';
     h += '<button class="btn" type="button" onClick="addVolume(\'' + obj._id + '\'); return false;">+</button>';
     h += '</div>';
-    h += '<br class="clearfix" style="margin-bottom: 10px;" /></div>';
+    h += '<br class="clearfix" style="margin-bottom: 10px;" />';
+    h += '<div class="eventFiles" id="eventFiles' + obj._id + '"></div>';
+
+    h += '</div>';
 
     return h;
 
@@ -362,61 +376,176 @@ function shuffleArray(array) {
 }
 
 function fileIcon(file) {
-	var h = '<div class="fileIcon">';
-  if (file.exception != undefined) {
-  	  // display exception
-  	 h += '<p>'+file.exception+'</p>';
-  	}
-  if (file.thumbs != undefined) {
-  	  // display image thumbnail
-  	  h += '<img src="'+serverApi+'/file?username=username&password=password&fileId='+file.thumbs[0].fileId+'" />';
-  	} else {
-  		// display generic icon
-  	}
-  	h += '<p>'+file.name+'</p>';
-  	h += '</div>';
-  	return h;
+    var h = '<div class="fileIcon">';
+    if (file.exception != undefined) {
+        // display exception
+        h += '<p>' + file.exception + '</p>';
+    }
+    if (file.thumbs != undefined) {
+        // display image thumbnail
+        h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+    } else {
+        // display generic icon
+    }
+    h += '<p>' + file.name + '</p>';
+    h += '<span><a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\');">Remove from event</a></span>';
+    h += '</div>';
+    return h;
 }
 
-function fileInBin(file) {
-	var h = '<div class="fileInBin">';
-  if (file.exception != undefined) {
-  	  // display exception
-  	 h += '<p>'+file.exception+'</p>';
-  	}
-  if (file.thumbs != undefined) {
-  	  // display image thumbnail
-  	  h += '<img src="'+serverApi+'/file?username=username&password=password&fileId='+file.thumbs[0].fileId+'" />';
-  	} else {
-  		// display generic icon
-  	}
-  	h += '<span>'+file.name+'</span>';
-  	h += '</div>';
-  	return h;
+function fileInBin(file, eventId) {
+    var h = '<div class="fileInBin">';
+    if (file.exception != undefined) {
+        // display exception
+        h += '<p>' + file.exception + '</p>';
+    }
+    if (file.thumbs != undefined) {
+        // display image thumbnail
+        h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+    } else {
+        // display generic icon
+    }
+    if (eventId) {
+     h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\');">Move to event</a></span>';
+    }
+    h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\');">Delete file</a></span>';
+    h += '<span><a href="' + serverApi + '/file?fileId=' + file.fileId + '">Open file</a></span>';
+    h += '<span>' + file.name + '</span>';
+    h += '</div>';
+    return h;
 }
 
-function loadFilebinFiles() {
-	$('#filebinFiles').html('');
-	apiCall('/filebin', 'GET', {}, function (err, data) {
+function moveFileToEvent(fileId, eventId) {
+    apiCall('/fileEvent', 'POST', {
+        f: fileId,
+        id: eventId
+    }, function (err, data) {
 
         if (err) {
             alert(err.error);
         } else {
-            for (var i=0; i<data.filebin.length; i++) {
-            	$('#filebinFiles').append(fileInBin(data.filebin[i]));
-            }
+            console.log(data);
+            $('#filebinFiles').html('');
+            loadFilebinFiles(undefined, function (data) {
+                for (var i = 0; i < data.length; i++) {
+                    $('#filebinFiles').append(fileInBin(data[i], eventId));
+                }
+            });
         }
 
     });
 }
 
+function removeFileFromEvent(fileId, eventId) {
+    apiCall('/fileEvent', 'DELETE', {
+        f: fileId,
+        id: eventId
+    }, function (err, data) {
+
+        if (err) {
+            alert(err.error);
+        } else {
+            console.log(data);
+            $('#eventFiles' + eventId).html('');
+            loadFilebinFiles(eventId, function (data) {
+                for (var i = 0; i < data.length; i++) {
+                    $('#eventFiles' + eventId).append(fileIcon(data[i]));
+                }
+            });
+        }
+
+    });
+}
+
+function deleteFile(fileId, eventId) {
+    apiCall('/file', 'DELETE', {
+        fileId: fileId
+    }, function (err, data) {
+
+        if (err) {
+            alert(err.error);
+        } else {
+            console.log(data);
+            $('#filebinFiles').html('');
+            loadFilebinFiles(undefined, function (data) {
+                for (var i = 0; i < data.length; i++) {
+                    $('#filebinFiles').append(fileInBin(data[i], eventId));
+                }
+            });
+        }
+
+    });
+}
+
+function loadFilebinFiles(event, cb) {
+    $('#filebinFiles').html('');
+    var i = {};
+    if (event !== undefined) {
+        i.event = event;
+    }
+    apiCall('/filebin', 'GET', i, function (err, data) {
+
+        if (err) {
+            alert(err.error);
+        } else {
+            cb(data.filebin);
+        }
+
+    });
+}
+
+var filebinToEvent = '';
+
+function addFilesToEvent(eventId) {
+	filebinToEvent = eventId;
+	$('#filebinLink').click();
+}
+
 $('#filebinLink').on("click", function (event) {
     event.preventDefault();
-    var h = '<input type="file" multiple="multiple" id="uploadFiles" name="files[]" /><output id="uploadList"></output>';
+
+    var h = '<p><input type="file" multiple="multiple" id="uploadFiles" name="files[]" /><output id="uploadList"></output></p>';
+    h += '<p><input type="text" id="fetchUrl" placeholder="fetch url (press enter)" /></p>';
+
+    var myfilebinToEvent = '';
+    if (filebinToEvent != '') {
+        myfilebinToEvent = filebinToEvent;
+        filebinToEvent = '';
+        h += '<h2>Select files to send to ' + myfilebinToEvent + '</h2>';
+    }
+
     h += '<div id="filebinFiles"></div>';
     $("#mainWindow").html(h);
-    
-    loadFilebinFiles();
+
+    loadFilebinFiles(undefined, function (data) {
+        for (var i = 0; i < data.length; i++) {
+            $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+        }
+    });
+
+    $('#fetchUrl').keypress(function (e) {
+        var p = e.which;
+        if (p == 13) {
+            // enter pressed, fetch file
+            apiCall('/fetch', 'POST', {
+                'url': $('#fetchUrl').val()
+            }, function (err, data) {
+
+                if (err) {
+                    alert(err.error);
+                } else {
+                    // clear fetchUrl
+                    $('#fetchUrl').val('');
+                    loadFilebinFiles(undefined, function (data) {
+                        for (var i = 0; i < data.length; i++) {
+                            $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+                        }
+                    });
+                }
+
+            });
+        }
+    });
 
     document.getElementById('uploadFiles').addEventListener('change', function (evt) {
 
@@ -426,7 +555,7 @@ $('#filebinLink').on("click", function (event) {
         formdata.append('password', $.cookie('password'));
         // open xhr
         var xhr = new XMLHttpRequest();
-        
+
         // progress event
         xhr.upload.addEventListener("progress", function (e) {
             if (e.lengthComputable) {
@@ -434,17 +563,21 @@ $('#filebinLink').on("click", function (event) {
                 console.log(currentState);
             }
         }, false);
-        
+
         // error event
         xhr.upload.addEventListener("error", function (e) {
             alert('error uploading file');
         }, false);
-        
+
         // loadend event
         xhr.upload.addEventListener("loadend", function (e) {
-            loadFilebinFiles();
+            loadFilebinFiles(undefined, function (data) {
+                for (var i = 0; i < data.length; i++) {
+                    $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+                }
+            });
         }, false);
-        
+
         // Loop through the FileList
         for (var i = 0, f; f = files[i]; i++) {
 
