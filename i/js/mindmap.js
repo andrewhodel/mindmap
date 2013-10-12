@@ -87,15 +87,56 @@ if ($.cookie('username') && $.cookie('password')) {
     });
 }
 
-function showEvents(volume) {
+function showEvents(volume, sort) {
+    if (typeof (volume) === 'undefined') volume = null;
+    if (typeof (sort) === 'undefined') sort = 'created';
 
-    // clear existing
-    $("#mainWindow").html('');
+    var myv = 'all events';
+    var mys = {
+        'sort': sort
+    };
+    if (volume != null) {
+        myv = volume;
+        mys.volumes = volume;
+    }
 
-    apiCall('/events', 'GET', {
-        'sort': 'created',
-        'volumes': volume
-    }, function (err, data) {
+    var sorts = [];
+    sorts.push({
+        call: 'created',
+        title: 'DATE CREATED'
+    });
+    sorts.push({
+        call: 'lastEdit',
+        title: 'DATE OF LAST EDIT'
+    });
+    sorts.push({
+        call: 'numEdits',
+        title: 'EDIT COUNT'
+    });
+
+    var myh = '<div id="eventsListHeader">';
+    myh += '<div id="elhLeft">' + myv + ' <span id="elhTotal"></span></div>';
+    myh += '<div id="elhRight">ORDER EVENTS BY: ';
+
+    for (var i = 0; i < sorts.length; i++) {
+        var newShowCall = 'showEvents(\'' + volume + '\',\'' + sorts[i].call + '\');';
+        if (volume == null) {
+        	newShowCall = 'showEvents(null,\'' + sorts[i].call + '\');';
+        }
+        var myt = sorts[i].title;
+        if (sort == sorts[i].call) {
+            myt = '<strong>' + sorts[i].title + '</strong>';
+        }
+        myh += '<a href="#" onClick="' + newShowCall + ' return false;">' + myt + '</a>';
+    }
+
+    myh += '</div>';
+    myh += '</div>';
+
+    $("#mainWindow").html(myh);
+
+    apiCall('/events', 'GET', mys, function (err, data) {
+    	    $("#elhTotal").html(data.events.length+' total');
         for (var i = 0; i < data.events.length; i++) {
 
             $("#mainWindow").append(eventObj(data.events[i]));
@@ -288,77 +329,8 @@ function showVolumes() {
     apiCall('/volumes', 'GET', {}, function (err, data) {
         //console.log(data);
 
-        // first generate each level
-        // height, number of elements
-        // 233, 5
-        // 144, 8
-        // 89, 13
-        // 55, 21
-        // 34, 21
-        // 21, 21
-
-        // first generate x, y spiral values
-        var x = 0,
-            y = 0,
-            delta = [0, -1],
-            width = 6,
-            height = 6;
-
-        var locs = {};
-
-        $("#mainWindow").html('<canvas id="volcan" height="800" width="' + $('#mainWindow').width() + '" style=""></canvas>');
-        var volcan = document.getElementById("volcan");
-        var context = volcan.getContext("2d");
-        context.textBaseline = 'middle';
-        context.textAlign = 'center';
-        context.font = "14px verdana";
         for (var i = 0; i < data.volumes.length; i++) {
-
-            if ((-width / 2 < x <= width / 2) && (-height / 2 < y <= height / 2)) {
-                locs[data.volumes[i].name] = [context.canvas.width / 2 + x * 100, context.canvas.height / 2 + y * 60];
-
-                //console.log(data.volumes[i]);
-                //context.fillRect(context.canvas.width/2+x*50, context.canvas.height/2+y*50, 5, 5);
-                context.fillStyle = 'white';
-                context.fillRect(context.canvas.width / 2 + x * 100 - 40, context.canvas.height / 2 + y * 60 - 10, 80, 20);
-                context.fillStyle = 'black';
-                context.fillText(data.volumes[i].name + ":" + data.volumes[i].count, context.canvas.width / 2 + x * 100, context.canvas.height / 2 + y * 60);
                 $("#mainWindow").append('<a href="#" rel="' + data.volumes[i].count + '" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;">' + data.volumes[i].name + '</a> ');
-            }
-
-            if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1 - y)) {
-                // change direction
-                delta = [-delta[1], delta[0]]
-            }
-
-            x += delta[0];
-            y += delta[1];
-
-        }
-
-        // change context to draw under
-        context.globalCompositeOperation = 'destination-over';
-
-        // loop through again and draw connections to locs
-        for (var i = 0; i < data.volumes.length; i++) {
-            if (data.volumes[i].count > 0) {
-
-                // set pencil to this volume
-                context.moveTo(locs[data.volumes[i].name][0], locs[data.volumes[i].name][1]);
-
-                // loop through all connections for this volume
-                if (data.volumes[i].connections) {
-                    for (var key in data.volumes[i].connections) {
-                        var obj = data.volumes[i].connections[key];
-                        // draw tp connection
-                        context.lineTo(locs[key][0], locs[key][1]);
-                        context.strokeStyle = '#' + Math.floor(Math.random() * 16777215).toString(16);;
-                        context.stroke();
-                        //console.log('parent: '+data.volumes[i].name+'('+locs[data.volumes[i].name][0]+', '+locs[data.volumes[i].name][1]+') | child: '+key+'('+locs[key][0]+', '+locs[key][1]);
-                    }
-                }
-            }
-
         }
 
     });

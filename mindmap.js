@@ -369,7 +369,7 @@ router.post('/eventVolume').bind(function (req, res, params) {
                 });
             },
             function (callback) {
-                // add event to volume
+                // add volume to event
                 db.collection('e', function (err, collection) {
                     collection.update({
                         '_id': new mongodb.ObjectID(params.id)
@@ -380,6 +380,16 @@ router.post('/eventVolume').bind(function (req, res, params) {
                     }, {
                         'new': true
                     }, function (err, docs) {
+                    	
+                    	   // update lastEdit for event
+                        collection.update({
+                            '_id': new mongodb.ObjectID(params.id)
+                        }, {
+                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                        }, {
+                            'safe': true
+                        }, function (err, docs) {
+                        });
 
                         callback(err, '');
                     });
@@ -509,7 +519,7 @@ router.del('/eventVolume').bind(function (req, res, params) {
                 });
             },
             function (callback) {
-                // remove event from volume
+                // remove volume from event
                 db.collection('e', function (err, collection) {
 
                     collection.update({
@@ -521,6 +531,17 @@ router.del('/eventVolume').bind(function (req, res, params) {
                     }, {
                         'safe': true
                     }, function (err, docs) {
+                    	                    	
+                    	   // update lastEdit for event
+                        collection.update({
+                            '_id': new mongodb.ObjectID(params.id)
+                        }, {
+                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                        }, {
+                            'safe': true
+                        }, function (err, docs) {
+                        });
+                        
                         callback(err, '');
                     });
 
@@ -696,7 +717,11 @@ router.post('/event').bind(function (req, res, params) {
                 db.collection('e', function (err, collection) {
                     var i = {
                         'title': params.title,
-                        'created': Math.round((new Date()).getTime() / 1000)
+                        'created': Math.round((new Date()).getTime() / 1000),
+                        'lastEdit': Math.round((new Date()).getTime() / 1000),
+                        'lastView': Math.round((new Date()).getTime() / 1000),
+                        'numEdits': 0,
+                        'numViews': 0
                     };
                     collection.insert(i, function (err, docs) {
                         if (err) {
@@ -787,7 +812,7 @@ router.put('/event').bind(function (req, res, params) {
 
             },
             function (callback) {
-                // update o
+                // update e
 
                 editParams(params, ['name'], function (i) {
 
@@ -1179,8 +1204,19 @@ router.post('/fileEvent').bind(function (req, res, params) {
                             'files': new mongodb.ObjectID(params.f)
                         }
                     }, {
-                        'new': true
+                        'safe': true
                     }, function (err, docs) {
+                    	
+                    	   // update lastEdit for event
+                        collection.update({
+                            '_id': new mongodb.ObjectID(params.id)
+                        }, {
+                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                        }, {
+                            'safe': true
+                        }, function (err, docs) {
+                        });
+                        
                         callback(err, '');
                     });
                 });
@@ -1195,7 +1231,7 @@ router.post('/fileEvent').bind(function (req, res, params) {
                             'event': new mongodb.ObjectID(params.id)
                         }
                     }, {
-                        'new': true
+                        'safe': true
                     }, function (err, docs) {
 
                         callback(err, '');
@@ -1303,6 +1339,17 @@ router.del('/fileEvent').bind(function (req, res, params) {
                     }, {
                         'safe': true
                     }, function (err, docs) {
+
+                    	   // update lastEdit for event
+                        collection.update({
+                            '_id': new mongodb.ObjectID(params.id)
+                        }, {
+                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                        }, {
+                            'safe': true
+                        }, function (err, docs) {
+                        });
+
                         callback(err, '');
                     });
                 });
@@ -1524,6 +1571,10 @@ function processFile(filepath, name, cb) {
         // video thumbnails
         videoThumbs(fileId, filepath);
      });
+    } else {
+    	// move file to db and delete it, since we aren't processing anything
+    	fileToDb(fileId, filepath, true, function (err) {
+    	});
     }
 
 }
@@ -1782,6 +1833,12 @@ db.open(function (err, db) {
                         }
 
                     ], function (err, results) {
+                    	
+                    	// to send back filename
+                    	// instead of file with no ext
+                    	// send 302 redirect to
+                    	// /file/fileId/filename.ext
+                    	// maybe a request with &withName=true
 
                         if (err) {
                             response.writeHead(500, {
