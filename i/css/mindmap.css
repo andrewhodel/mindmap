@@ -39,7 +39,7 @@ html,body {
 
 .eventItem {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid #999;
     margin-top: 10px;
     background-color: #fff;
 }
@@ -96,13 +96,14 @@ html,body {
 }
 
 .eventTitleName {
-    font-size: 1.8em;
-    text-decoration: underline;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-top: 3px;
 }
 
 .eventTitleAccess {
     font-size: .8em;
-    margin-top: 4px;
+    margin-top: 11px;
 }
 
 .eventTitleAccess span {

@@ -153,7 +153,7 @@ function showEvents(volume, sort) {
                         $('#eventText' + tid).html(data.eventData.d);
                     });
 
-                    if (this.d.files.length > 0 && this.d.files !== undefined) {
+                    if (typeof this.d.files != 'undefined') {
                         loadFilebinFiles(tid, function (data) {
                             for (var i = 0; i < data.length; i++) {
                                 $('#eventFiles' + tid).append(fileIcon(data[i]));

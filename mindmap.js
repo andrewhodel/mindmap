@@ -6,8 +6,7 @@ var bcrypt = require('bcrypt');
 var fs = require('fs');
 var url = require('url');
 var http = require('http');
-var urlize = require('./lib/urlize.js').urlize;
-var md = require("node-markdown").Markdown;
+var marked = require('marked');
 var multiparty = require('multiparty');
 var util = require('util');
 var mime = require('mime');
@@ -283,17 +282,39 @@ router.get('/eventData').bind(function (req, res, params) {
                         ht = docs[0];
 
                         if (params.html == 'true') {
-                            //ht.d = md(ht.d, true);
-                            ht.d = urlize(ht.d);
-                            ht.d = ht.d.replace(/\n/g, '<br />');
+
+                            var mo = {
+                                gfm: true,
+                                highlight: false,
+                                tables: true,
+                                breaks: false,
+                                pedantic: false,
+                                sanitize: true,
+                                smartLists: true,
+                                smartypants: false,
+                                langPrefix: 'lang-'
+                            };
+
+                            marked(ht.d, mo, function (err, content) {
+                                if (err) throw err;
+
+                                ht.d = content;
+
+                                res.send({
+                                    'success': 1,
+                                    'eventData': ht
+                                });
+
+                            });
+
+                        } else {
+
+                            res.send({
+                                'success': 1,
+                                'eventData': ht
+                            });
 
                         }
-
-
-                        res.send({
-                            'success': 1,
-                            'eventData': ht
-                        });
                     });
                 });
 
@@ -380,16 +401,17 @@ router.post('/eventVolume').bind(function (req, res, params) {
                     }, {
                         'new': true
                     }, function (err, docs) {
-                    	
-                    	   // update lastEdit for event
+
+                        // update lastEdit for event
                         collection.update({
                             '_id': new mongodb.ObjectID(params.id)
                         }, {
-                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                            '$set': {
+                                lastEdit: Math.round((new Date()).getTime() / 1000)
+                            }
                         }, {
                             'safe': true
-                        }, function (err, docs) {
-                        });
+                        }, function (err, docs) {});
 
                         callback(err, '');
                     });
@@ -531,17 +553,18 @@ router.del('/eventVolume').bind(function (req, res, params) {
                     }, {
                         'safe': true
                     }, function (err, docs) {
-                    	                    	
-                    	   // update lastEdit for event
+
+                        // update lastEdit for event
                         collection.update({
                             '_id': new mongodb.ObjectID(params.id)
                         }, {
-                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                            '$set': {
+                                lastEdit: Math.round((new Date()).getTime() / 1000)
+                            }
                         }, {
                             'safe': true
-                        }, function (err, docs) {
-                        });
-                        
+                        }, function (err, docs) {});
+
                         callback(err, '');
                     });
 
@@ -1206,17 +1229,18 @@ router.post('/fileEvent').bind(function (req, res, params) {
                     }, {
                         'safe': true
                     }, function (err, docs) {
-                    	
-                    	   // update lastEdit for event
+
+                        // update lastEdit for event
                         collection.update({
                             '_id': new mongodb.ObjectID(params.id)
                         }, {
-                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                            '$set': {
+                                lastEdit: Math.round((new Date()).getTime() / 1000)
+                            }
                         }, {
                             'safe': true
-                        }, function (err, docs) {
-                        });
-                        
+                        }, function (err, docs) {});
+
                         callback(err, '');
                     });
                 });
@@ -1340,15 +1364,16 @@ router.del('/fileEvent').bind(function (req, res, params) {
                         'safe': true
                     }, function (err, docs) {
 
-                    	   // update lastEdit for event
+                        // update lastEdit for event
                         collection.update({
                             '_id': new mongodb.ObjectID(params.id)
                         }, {
-                            '$set': {lastEdit : Math.round((new Date()).getTime() / 1000)}
+                            '$set': {
+                                lastEdit: Math.round((new Date()).getTime() / 1000)
+                            }
                         }, {
                             'safe': true
-                        }, function (err, docs) {
-                        });
+                        }, function (err, docs) {});
 
                         callback(err, '');
                     });
@@ -1567,14 +1592,13 @@ function processFile(filepath, name, cb) {
             imageThumbs(fileId, filepath);
         });
     } else if (m.indexOf('video') == 0) {
-    	fileToDb(fileId, filepath, false, function (err) {
-        // video thumbnails
-        videoThumbs(fileId, filepath);
-     });
+        fileToDb(fileId, filepath, false, function (err) {
+            // video thumbnails
+            videoThumbs(fileId, filepath);
+        });
     } else {
-    	// move file to db and delete it, since we aren't processing anything
-    	fileToDb(fileId, filepath, true, function (err) {
-    	});
+        // move file to db and delete it, since we aren't processing anything
+        fileToDb(fileId, filepath, true, function (err) {});
     }
 
 }
@@ -1677,8 +1701,8 @@ function videoThumbs(fileId, filepath) {
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/1000px_' + basename;
                 // create mid thumb
-                exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y '+thisname, function (error, stdout, stderr) {
-                    console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y '+thisname);
+                exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname, function (error, stdout, stderr) {
+                    console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname);
                     console.log(stdout);
                     console.log(stderr);
                     callback(null, thisname);
@@ -1833,12 +1857,12 @@ db.open(function (err, db) {
                         }
 
                     ], function (err, results) {
-                    	
-                    	// to send back filename
-                    	// instead of file with no ext
-                    	// send 302 redirect to
-                    	// /file/fileId/filename.ext
-                    	// maybe a request with &withName=true
+
+                        // to send back filename
+                        // instead of file with no ext
+                        // send 302 redirect to
+                        // /file/fileId/filename.ext
+                        // maybe a request with &withName=true
 
                         if (err) {
                             response.writeHead(500, {
