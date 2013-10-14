@@ -1622,6 +1622,8 @@ function processFile(filepath, name, cb) {
 
 // thumb queue
 var q = async.queue(function (task, callback) {
+	console.log('running q for ---------------'),
+	console.log(task);
     if (task.type == 'image') {
         imageThumb(task.fileId, task.filepath, function (err) {
             callback(err);
@@ -1738,7 +1740,7 @@ function videoThumb(fileId, filepath, cb) {
                 // create 100 px thumbnail
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
-                var thisname = dirname + '/1000px_' + basename + '.png';
+                var thisname = dirname + '/100px_' + basename + '.png';
                 exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname, function (error, stdout, stderr) {
                     console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname);
                     console.log(stdout);
@@ -1746,6 +1748,19 @@ function videoThumb(fileId, filepath, cb) {
                     callback(null, thisname);
                 });
             },
+
+            function (callback) {
+                // overlay play button
+                var basename = path.basename(filepath);
+                var dirname = path.dirname(filepath);
+                exec('composite -gravity center ./lib/overlay.png ' + dirname + '/100px_' + basename + '.png ' + dirname + '/100px_' + basename + '.png', function (error, stdout, stderr) {
+                    console.log('composite -gravity center ./lib/overlay.png ' + dirname + '/100px_' + basename + '.png ' + dirname + '/100px_' + basename + '.png');
+                    console.log(stdout);
+                    console.log(stderr);
+                    callback(null, filepath);
+                });
+            },
+
             function (callback) {
                 // create webm file
                 var basename = path.basename(filepath);
@@ -1786,13 +1801,13 @@ function videoThumb(fileId, filepath, cb) {
                 // webm video
                 u.mimetype = 'video/webm';
                 // change file name to show we transcoded it
-                u.name = results[2][0].name + '.webm';
+                u.name = results[3][0].name + '.webm';
 
-                var filestats = fs.statSync(results[1]);
+                var filestats = fs.statSync(results[2]);
                 u.size = filestats.size;
 
                 // overwrite original file with webm transcode
-                fileToDb(fileId, results[1], true, function (err) {});
+                fileToDb(fileId, results[2], true, function (err) {});
 
                 // update db with size and thumbnails
                 db.collection('filebin', function (err, collection) {

@@ -362,7 +362,7 @@ function fileIcon(file) {
     }
     h += '</a>';
     h += '<p class="filename">' + file.name + '';
-    h += '<br /><a href="#" onClick="fileInfo(\'' + file.fileId + '\');">I</a> | <a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\');">X</a></p>';
+    h += '<br /><a href="#" onClick="fileInfo(\'' + file.fileId + '\'); return false;">I</a> | <a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\'); return false;">X</a></p>';
     h += '</div>';
     return h;
 }
@@ -380,10 +380,10 @@ function fileInBin(file, eventId) {
         h += '<img src="img/fileicon.png" />';
     }
     if (eventId) {
-     h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\');">Move to event</a></span>';
+     h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\'); return false;">Move to event</a></span>';
     }
-    h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\');">Delete file</a></span>';
-    h += '<span><a target="_blank" href="' + serverApi + '/file?fileId=' + file.fileId + '">Open file</a></span>';
+    h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\'); return false;">Delete file</a></span>';
+    h += '<span><a target="_blank" href="' + serverApi + '/file/' + file.fileId + '/' + file.name + '">Open file</a></span>';
     h += '<span>' + file.name + '</span>';
     h += '</div>';
     return h;
