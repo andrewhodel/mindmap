@@ -1018,6 +1018,7 @@ router.del('/file').bind(function (req, res, params) {
             },
             function (callback) {
                 // get the file from filebin
+
                 db.collection('filebin', function (err, collection) {
                     collection.find({
                         'fileId': new mongodb.ObjectID(params.fileId)
@@ -1025,6 +1026,7 @@ router.del('/file').bind(function (req, res, params) {
                         callback(err, docs)
                     });
                 });
+
             }
 
         ], function (err, results) {
@@ -1065,6 +1067,14 @@ router.del('/file').bind(function (req, res, params) {
                             });
                         }
                     }
+
+                    // remove videoThumb from gridstore
+                    if (results[2][0].videoThumb) {
+                        mongodb.GridStore.unlink(db, results[2][0].videoThumb.fileId, function (err, gridStore) {
+                            console.log('gridstore removing videoThumb');
+                        });
+                    }
+
                     // remove file from gridstore
                     mongodb.GridStore.unlink(db, new mongodb.ObjectID(params.fileId), function (err, gridStore) {
                         console.log('gridstore removing file');
@@ -1583,18 +1593,25 @@ function processFile(filepath, name, cb) {
         cb(err);
     });
 
-
     // call thumbs
     if (m == 'image/jpeg' || m == 'image/gif' || m == 'image/png') {
         // call fileToDb for filepath
         fileToDb(fileId, filepath, false, function (err) {
             // generate image thumbnails
-            imageThumbs(fileId, filepath);
+            q.push({
+                'fileId': fileId,
+                'filepath': filepath,
+                'type': 'image'
+            });
         });
     } else if (m.indexOf('video') == 0) {
         fileToDb(fileId, filepath, false, function (err) {
             // video thumbnails
-            videoThumbs(fileId, filepath);
+            q.push({
+                'fileId': fileId,
+                'filepath': filepath,
+                'type': 'video'
+            });
         });
     } else {
         // move file to db and delete it, since we aren't processing anything
@@ -1603,8 +1620,26 @@ function processFile(filepath, name, cb) {
 
 }
 
+// thumb queue
+var q = async.queue(function (task, callback) {
+    if (task.type == 'image') {
+        imageThumb(task.fileId, task.filepath, function (err) {
+            callback(err);
+        });
+    } else if (task.type == 'video') {
+        videoThumb(task.fileId, task.filepath, function (err) {
+            callback(err);
+        });
+    }
+}, 2);
+
+// assign a callback
+q.drain = function () {
+    //console.log('all items have been processed');
+}
+
 // function to generate image thumbnails
-function imageThumbs(fileId, filepath) {
+function imageThumb(fileId, filepath, cb) {
 
     async.series([
 
@@ -1614,7 +1649,8 @@ function imageThumbs(fileId, filepath) {
                     console.log('identify ' + filepath + ' | cut -d" " -f 3');
                     console.log(stdout);
                     console.log(stderr);
-                    callback(null, stdout);
+                    // callback and replace newline chars
+                    callback(null, stdout.replace(/\s/g, ''));
                 });
             },
             function (callback) {
@@ -1622,7 +1658,6 @@ function imageThumbs(fileId, filepath) {
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/100px_' + basename;
-                // create small thumb
                 exec('convert ' + filepath + ' -resize 100x100 ' + thisname, function (error, stdout, stderr) {
                     console.log('convert ' + filepath + ' -resize 100x100 ' + thisname);
                     console.log(stdout);
@@ -1635,7 +1670,6 @@ function imageThumbs(fileId, filepath) {
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/1000px_' + basename;
-                // create mid thumb
                 exec('convert ' + filepath + ' -resize 1000x1000 ' + thisname, function (error, stdout, stderr) {
                     console.log('convert ' + filepath + ' -resize 1000x1000 ' + thisname);
                     console.log(stdout);
@@ -1678,9 +1712,14 @@ function imageThumbs(fileId, filepath) {
                         '$set': u
                     }, {
                         'safe': true
-                    }, function (err, docs) {});
+                    }, function (err, docs) {
+                        // all done, safe to callback
+                        cb(err);
+                    });
                 });
 
+            } else {
+                cb(err);
             }
 
             // delete the source filepath no matter what
@@ -1691,7 +1730,7 @@ function imageThumbs(fileId, filepath) {
 }
 
 // function to generate video thumbnails
-function videoThumbs(fileId, filepath) {
+function videoThumb(fileId, filepath, cb) {
 
     async.series([
 
@@ -1699,13 +1738,33 @@ function videoThumbs(fileId, filepath) {
                 // create 100 px thumbnail
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
-                var thisname = dirname + '/1000px_' + basename;
-                // create mid thumb
+                var thisname = dirname + '/1000px_' + basename + '.png';
                 exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname, function (error, stdout, stderr) {
                     console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname);
                     console.log(stdout);
                     console.log(stderr);
                     callback(null, thisname);
+                });
+            },
+            function (callback) {
+                // create webm file
+                var basename = path.basename(filepath);
+                var dirname = path.dirname(filepath);
+                var thisname = dirname + '/' + basename + '.webm';
+                exec('avconv -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname, function (error, stdout, stderr) {
+                    console.log('avconv -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname);
+                    console.log(stdout);
+                    console.log(stderr);
+                    callback(null, thisname);
+                });
+            },
+            function (callback) {
+                db.collection('filebin', function (err, collection) {
+                    collection.find({
+                        'fileId': fileId
+                    }).toArray(function (err, docs) {
+                        callback(err, docs)
+                    });
                 });
             },
 
@@ -1724,6 +1783,17 @@ function videoThumbs(fileId, filepath) {
                 };
                 fileToDb(ofid, results[0], true, function (err) {});
 
+                // webm video
+                u.mimetype = 'video/webm';
+                // change file name to show we transcoded it
+                u.name = results[2][0].name + '.webm';
+
+                var filestats = fs.statSync(results[1]);
+                u.size = filestats.size;
+
+                // overwrite original file with webm transcode
+                fileToDb(fileId, results[1], true, function (err) {});
+
                 // update db with size and thumbnails
                 db.collection('filebin', function (err, collection) {
                     collection.update({
@@ -1732,9 +1802,14 @@ function videoThumbs(fileId, filepath) {
                         '$set': u
                     }, {
                         'safe': true
-                    }, function (err, docs) {});
+                    }, function (err, docs) {
+                        // safe to call cb
+                        cb(err);
+                    });
                 });
 
+            } else {
+                cb(err);
             }
 
             // delete the source filepath no matter what
@@ -1831,10 +1906,10 @@ db.open(function (err, db) {
 													*/
 
                     if (up.pathname !== '/file') {
-			// this request includes no params and the filename
-			// we need to set up.query
-			var s = up.path.split('/');
-			up.query.fileId = s[2];
+                        // this request includes no params and the filename
+                        // we need to set up.query
+                        var s = up.path.split('/');
+                        up.query.fileId = s[2];
                     }
 
                     async.series([
@@ -1875,82 +1950,87 @@ db.open(function (err, db) {
                             var gridStore = new mongodb.GridStore(db, new mongodb.ObjectID(up.query.fileId), "r");
                             gridStore.open(function (err, gridStore) {
 
-if (request.headers.range) {
+                                if (request.headers.range) {
 
-// this is a partial request
+                                    // this is a partial request
 
-  var start = 0;
-  var end = 0;
-  var range = request.headers.range;
-  if (range != null) {
-    start = parseInt(range.slice(range.indexOf('bytes=')+6,
-      range.indexOf('-')));
-    end = parseInt(range.slice(range.indexOf('-')+1,
-      range.length));
-  }
-  if (isNaN(end) || end == 0) end = gridStore.length-1;
- 
-  if (start > end) return;
- 
-  sys.puts('Browser requested bytes from ' + start + ' to ' +
-    end + ' of file ' + up.query.fileId);
- 
-  response.writeHead(206, { // NOTE: a partial http response
-    'Connection':'close',
-    'Content-Length':end - start,
-    'Content-Range':'bytes '+start+'-'+end+'/'+gridStore.length,
-    'Content-Type':gridStore.contentType,
-    'Accept-Ranges':'bytes',
-    'Server':'mindmap',
-    'Transfer-Encoding':'chunked'
-    });
+                                    var start = 0;
+                                    var end = 0;
+                                    var range = request.headers.range;
+                                    if (range != null) {
+                                        start = parseInt(range.slice(range.indexOf('bytes=') + 6,
+                                            range.indexOf('-')));
+                                        end = parseInt(range.slice(range.indexOf('-') + 1,
+                                            range.length));
+                                    }
+                                    if (isNaN(end) || end == 0) end = gridStore.length - 1;
 
-var length = end-start;
+                                    if (start > end) return;
 
-gridStore.seek(start, function() {
-  gridStore.read(length, function(err, data) {
+                                    sys.puts('Browser requested bytes from ' + start + ' to ' +
+                                        end + ' of file ' + up.query.fileId);
 
-    response.end(new Buffer(data, 'binary'));
+                                    response.writeHead(206, { // NOTE: a partial http response
+                                        'Connection': 'close',
+                                        'Content-Length': end - start,
+                                        'Content-Range': 'bytes ' + start + '-' + end + '/' + gridStore.length,
+                                        'Content-Type': gridStore.contentType,
+                                        'Accept-Ranges': 'bytes',
+                                        'Server': 'mindmap',
+                                        'Transfer-Encoding': 'chunked'
+                                    });
 
-  });
-});
+                                    var length = end - start;
 
-} else {
+                                    gridStore.seek(start, function () {
+                                        gridStore.read(length, function (err, data) {
 
-// this is a non partial request
-                                var stream = gridStore.stream(true);
+                                            response.end(new Buffer(data, 'binary'));
 
-                                //response.setHeader("Content-Type", gridStore.contentType);
-                                //response.setHeader("Content-Length", gridStore.length);
-                                //response.setHeader("Cache-Control", 'public, max-age=86400');
+                                        });
+                                    });
 
-                                response.writeHead(200, {"Content-Type": gridStore.contentType, "Content-Length": gridStore.length, "Cache-Control": 'public, max-age=86400'});
+                                } else {
 
-                                //stream.pipe(response);
+                                    // this is a non partial request
+                                    var stream = gridStore.stream(true);
 
-    stream.on('data', function(data) {
-        var flushed = response.write(data);
-        // Pause the read stream when the write stream gets saturated
-        if(!flushed){
-            stream.pause();
-        }
-    });
+                                    //response.setHeader("Content-Type", gridStore.contentType);
+                                    //response.setHeader("Content-Length", gridStore.length);
+                                    //response.setHeader("Cache-Control", 'public, max-age=86400');
 
-    response.on('drain', function() {
-        // Resume the read stream when the write stream gets hungry 
-        stream.resume();
-    });
+                                    response.writeHead(200, {
+                                        "Content-Type": gridStore.contentType,
+                                        "Content-Length": gridStore.length,
+                                        "Cache-Control": 'public, max-age=86400',
+                                        'Accept-Ranges': 'bytes'
+                                    });
 
-    stream.on('end', function() {
-        response.end();
-    });
+                                    //stream.pipe(response);
 
-    stream.on('error', function(err) {
-        console.error('Exception', err);
-        response.end();
-    });
+                                    stream.on('data', function (data) {
+                                        var flushed = response.write(data);
+                                        // Pause the read stream when the write stream gets saturated
+                                        if (!flushed) {
+                                            stream.pause();
+                                        }
+                                    });
 
-}
+                                    response.on('drain', function () {
+                                        // Resume the read stream when the write stream gets hungry 
+                                        stream.resume();
+                                    });
+
+                                    stream.on('end', function () {
+                                        response.end();
+                                    });
+
+                                    stream.on('error', function (err) {
+                                        console.error('Exception', err);
+                                        response.end();
+                                    });
+
+                                }
 
                             });
                         }
