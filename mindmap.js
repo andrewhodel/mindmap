@@ -1816,7 +1816,7 @@ db.open(function (err, db) {
                         }
                     });
 
-                } else if (up.pathname === '/file' && request.method === 'GET') {
+                } else if ((up.pathname.indexOf('/file/') == 0 || up.pathname === '/file') && request.method === 'GET') {
                     /*
 													GET /file - get a file
 													
@@ -1829,6 +1829,13 @@ db.open(function (err, db) {
 													500 - Error
 														returns error
 													*/
+
+                    if (up.pathname !== '/file') {
+			// this request includes no params and the filename
+			// we need to set up.query
+			var s = up.path.split('/');
+			up.query.fileId = s[2];
+                    }
 
                     async.series([
 
@@ -1858,12 +1865,6 @@ db.open(function (err, db) {
 
                     ], function (err, results) {
 
-                        // to send back filename
-                        // instead of file with no ext
-                        // send 302 redirect to
-                        // /file/fileId/filename.ext
-                        // maybe a request with &withName=true
-
                         if (err) {
                             response.writeHead(500, {
                                 'content-type': 'text/plain'
@@ -1874,9 +1875,82 @@ db.open(function (err, db) {
                             var gridStore = new mongodb.GridStore(db, new mongodb.ObjectID(up.query.fileId), "r");
                             gridStore.open(function (err, gridStore) {
 
+if (request.headers.range) {
+
+// this is a partial request
+
+  var start = 0;
+  var end = 0;
+  var range = request.headers.range;
+  if (range != null) {
+    start = parseInt(range.slice(range.indexOf('bytes=')+6,
+      range.indexOf('-')));
+    end = parseInt(range.slice(range.indexOf('-')+1,
+      range.length));
+  }
+  if (isNaN(end) || end == 0) end = gridStore.length-1;
+ 
+  if (start > end) return;
+ 
+  sys.puts('Browser requested bytes from ' + start + ' to ' +
+    end + ' of file ' + up.query.fileId);
+ 
+  response.writeHead(206, { // NOTE: a partial http response
+    'Connection':'close',
+    'Content-Length':end - start,
+    'Content-Range':'bytes '+start+'-'+end+'/'+gridStore.length,
+    'Content-Type':gridStore.contentType,
+    'Accept-Ranges':'bytes',
+    'Server':'mindmap',
+    'Transfer-Encoding':'chunked'
+    });
+
+var length = end-start;
+
+gridStore.seek(start, function() {
+  gridStore.read(length, function(err, data) {
+
+    response.end(new Buffer(data, 'binary'));
+
+  });
+});
+
+} else {
+
+// this is a non partial request
                                 var stream = gridStore.stream(true);
-                                response.setHeader("Content-Type", gridStore.contentType);
-                                stream.pipe(response);
+
+                                //response.setHeader("Content-Type", gridStore.contentType);
+                                //response.setHeader("Content-Length", gridStore.length);
+                                //response.setHeader("Cache-Control", 'public, max-age=86400');
+
+                                response.writeHead(200, {"Content-Type": gridStore.contentType, "Content-Length": gridStore.length, "Cache-Control": 'public, max-age=86400'});
+
+                                //stream.pipe(response);
+
+    stream.on('data', function(data) {
+        var flushed = response.write(data);
+        // Pause the read stream when the write stream gets saturated
+        if(!flushed){
+            stream.pause();
+        }
+    });
+
+    response.on('drain', function() {
+        // Resume the read stream when the write stream gets hungry 
+        stream.resume();
+    });
+
+    stream.on('end', function() {
+        response.end();
+    });
+
+    stream.on('error', function(err) {
+        console.error('Exception', err);
+        response.end();
+    });
+
+}
 
                             });
                         }

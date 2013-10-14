@@ -349,7 +349,7 @@ function shuffleArray(array) {
 
 function fileIcon(file) {
     var h = '<div class="fileIcon">';
-    h += '<a target="_blank" href="' + serverApi + '/file?fileId=' + file.fileId + '">';
+    h += '<a target="_blank" href="' + serverApi + '/file/' + file.fileId + '/' + file.name + '">';
     if (file.thumbs != undefined) {
         // display image thumbnail
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
