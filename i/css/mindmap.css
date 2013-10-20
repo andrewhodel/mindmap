@@ -216,7 +216,7 @@ html,body {
 #elhLeft {
     float: left;
     font-size: 40px;
-    color: green;
+    color: rgb(91, 183, 91);
     font-weight: bold;
     font-style: italic;
     margin-top: 12px;

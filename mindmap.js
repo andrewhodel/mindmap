@@ -711,6 +711,7 @@ AUTH REQUIRED
 REQUEST PARAMS
 title* - STR title of the event
 d* - STR data of the event
+created - INT unix timestamp of creation date
 
 RESPONSE CODES
 200 - Object Created
@@ -746,6 +747,12 @@ router.post('/event').bind(function (req, res, params) {
                         'numEdits': 0,
                         'numViews': 0
                     };
+
+			if (params.created>0) {
+				// add ts
+				i.created = Number(params.created);
+			}
+
                     collection.insert(i, function (err, docs) {
                         if (err) {
                             res.send(500, {}, {
@@ -950,6 +957,8 @@ router.del('/event').bind(function (req, res, params) {
                             });
                         } else {
 
+				if (typeof object.volumes !== 'undefined') {
+
                             // subtract 1 from volume and lastModified for each volume
                             db.collection('v', function (err, collection) {
                                 for (var i = 0; i < object.volumes.length; i++) {
@@ -968,6 +977,8 @@ router.del('/event').bind(function (req, res, params) {
                                     }, function (err, docs) {});
                                 }
                             });
+
+				}
 
 
                             res.send({

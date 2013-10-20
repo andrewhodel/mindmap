@@ -261,7 +261,19 @@ function eventObj(obj) {
     h += '<div class="eventVolumes">';
     if (obj.volumes != undefined) {
         for (var i = 0; i < obj.volumes.length; i++) {
-            h += '<div><a href="#" onClick="showEvents(\'' + obj.volumes[i] + '\'); return false;">' + obj.volumes[i] + '</a> <a href="#" style="font-size: .8em;" onClick="volumeConnections(\'' + obj.volumes[i] + '\'); return false;">(C)</a> <a href="#" style="font-size: .8em;" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\'); return false;">(X)</a></div>';
+
+    h += '<div class="btn-group">';
+    h += '<button class="btn btn-success" onClick="showEvents(\'' + obj.volumes[i] + '\'); return false;">' + obj.volumes[i] + '</button>';
+    h += '<button class="btn btn-success dropdown-toggle" data-toggle="dropdown">';
+    h += '<span class="caret"></span>';
+    h += '</button>';
+    h += '<ul class="dropdown-menu">';
+            h += '<li><a href="#" style="font-size: .8em;" onClick="volumeConnections(\'' + obj.volumes[i] + '\'); return false;">Connections</a></li>';
+            h += '<li><a href="#" style="font-size: .8em;" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\'); return false;">Remove from Event</a></li>';
+
+    h += '</ul>';
+    h += '</div>';
+
         }
     }
     h += '</div>';
@@ -330,7 +342,7 @@ function showVolumes() {
         //console.log(data);
 
         for (var i = 0; i < data.volumes.length; i++) {
-                $("#mainWindow").append('<a href="#" rel="' + data.volumes[i].count + '" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;">' + data.volumes[i].name + '</a> ');
+                $("#mainWindow").append('<button class="btn btn-large btn-success" style="margin: 4px;" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;">' + data.volumes[i].name + ' (' + data.volumes[i].count + ')</button> ');
         }
 
     });
@@ -587,7 +599,8 @@ $('#newEventLink').on("click", function (event) {
     var h = '<form>';
     h += '<fieldset>';
     h += '<h3>New Event</h3>';
-    h += '<input id="newEventName" type="text" placeholder="Event Name">';
+    h += '<input id="newEventName" type="text" placeholder="Event Name"><br />';
+    h += '<input id="newEventCreated" type="text" placeholder="Date Created (Unix TS)">';
     h += '<span class="help-block">Event data.</span>';
     h += '<textarea id="newEventData" style="width: 95%; height: 500px;"></textarea>';
     h += '<button type="submit" class="btn" onClick="newEventSubmit(); return false;">Submit</button>';
@@ -601,6 +614,7 @@ function newEventSubmit() {
 
     apiCall('/event', 'POST', {
         'title': $('#newEventName').val(),
+        'created': $('#newEventCreated').val(),
         'd': $('#newEventData').val()
     }, function (err, data) {
 
