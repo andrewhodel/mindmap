@@ -287,7 +287,7 @@ function eventObj(obj) {
     h += '</textarea><br />';
     h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="saveEdit(\'' + obj._id + '\'); return false;">Save</button> ';
     h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="cancelEdit(\'' + obj._id + '\'); return false;">Cancel</button>';
-    h += '<br class="clearfix" style="margin-bottom: 10px;" /></div>';
+    h += '</div>';
 
     h += '<div class="eventVolumes">';
     if (obj.volumes != undefined) {
@@ -307,7 +307,7 @@ function eventObj(obj) {
 
         }
     }
-    h += '</div>';
+    h += '</div><div class="eventActions">';
 
     h += '<button style="margin-left: 6px; float: right;" class="btn btn-danger" type="button" onClick="deleteEvent(\'' + obj._id + '\'); return false;">delete</button>';
     h += '<button style="margin-left: 6px; float: right;" class="btn" type="button" onClick="editEvent(\'' + obj._id + '\'); return false;">edit</button>';
@@ -316,8 +316,8 @@ function eventObj(obj) {
     h += '<input placeholder="add volume" class="span2" id="addVolumeText' + obj._id + '" type="text">';
     h += '<button class="btn" type="button" onClick="addVolume(\'' + obj._id + '\'); return false;">+</button>';
     h += '</div>';
-    h += '<br class="clearfix" style="margin-bottom: 10px;" />';
-    h += '<div class="eventFiles"><div style="width: auto; white-space: nowrap" id="eventFiles' + obj._id + '"></div></div>';
+    h += '</div>';
+    h += '<div class="eventFiles" id="eventFiles' + obj._id + '"></div>';
 
     h += '</div>';
 

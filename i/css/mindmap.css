@@ -45,8 +45,8 @@ html,body {
 }
 
 .eventVolumes {
-    color: #aaa;
     float: left;
+    color: #aaa;
 }
 
 .eventVolumes div {
@@ -62,6 +62,9 @@ html,body {
 
 .eventVolumes a:hover {
     color: red;
+}
+
+.eventActions {
 }
 
 .eventAddVolume {
@@ -133,7 +136,9 @@ html,body {
     border-top: 1px solid #ddd;
     margin-top: 10px;
     padding-top: 10px;
-    overflow-x: auto;
+    overflow: auto;
+    max-height: 600px;
+    clear: both;
 }
 
 .eventTimes {
@@ -143,7 +148,8 @@ html,body {
 }
 
 .fileIcon {
-    display: inline-block;
+    display: block;
+    float: left;
     margin-left: 2px;
     margin-right: 2px;
     height: 130px;
