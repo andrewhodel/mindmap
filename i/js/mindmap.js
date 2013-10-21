@@ -133,34 +133,51 @@ function showEvents(volume, sort) {
     myh += '</div>';
     myh += '</div>';
 
+    mys.limit = 6;
+
     $("#mainWindow").html(myh);
 
+    getRangedEvents(mys);
+
+}
+
+function getRangedEvents(mys, last) {
+
+if (typeof last !== 'undefined') {
+	mys.last = last;
+}
+
     apiCall('/events', 'GET', mys, function (err, data) {
-    	    $("#elhTotal").html(data.events.length+' total');
         for (var i = 0; i < data.events.length; i++) {
 
-            $("#mainWindow").append(eventObj(data.events[i]));
+		console.log('got object :');
+		console.log(data.events[i]);
 
-            // bind once
-            $('#eventItem' + data.events[i]._id).one('inview', function (event, isInView, visiblePartX, visiblePartY) {
-                console.log(this.d);
-                if (isInView) {
-                    // element is now visible in the viewport
-                    var tid = this.d._id;
-                    //console.log(tid);
+                    eventData(data.events[i]._id, true, function (data1) {
+            		$("#mainWindow").append(eventObj(this.d));
+                        $('#eventText' + this.d._id).html(data1.eventData.d);
 
-                    eventData(tid, true, function (data) {
-                        $('#eventText' + tid).html(data.eventData.d);
-                    });
+                    if (typeof this.d.files !== 'undefined') {
 
-                    if (typeof this.d.files != 'undefined') {
-                        loadFilebinFiles(tid, function (data) {
-                            for (var i = 0; i < data.length; i++) {
-                                $('#eventFiles' + tid).append(fileIcon(data[i]));
+                        loadFilebinFiles(this.d._id, function (data2) {
+                            for (var ii = 0; ii < data2.length; ii++) {
+                                $('#eventFiles' + this.d._id).append(fileIcon(data2[ii]));
                             }
-                        });
+                        }.bind({
+        	        	d: this.d
+            	        }));
                     }
 
+            	if (this.i == mys.limit-1) {
+
+		// put inview event to load more when bottom event is seen
+            $('#eventItem' + this.d._id).one('inview', function (event, isInView, visiblePartX, visiblePartY) {
+                    // element is now visible in the viewport
+                    var tid = this.d._id;
+
+                if (isInView) {
+			console.log('got inview for '+tid);
+			getRangedEvents(mys, this.d[mys.sort]);
                     if (visiblePartY == 'top') {
                         // top part of element is visible
                     } else if (visiblePartY == 'bottom') {
@@ -171,11 +188,25 @@ function showEvents(volume, sort) {
                 } else {
                     // element has gone out of viewport
                 }
+
             }.bind({
-                d: data.events[i]
+                d: this.d
             }));
 
+		}
+
+	            }.bind({
+        	        d: data.events[i],
+			i: i
+            	    }));
+
         }
+
+	if (typeof last === 'undefined') {
+	    //scroll to top, this is a fresh load
+            window.scrollTo(0,0);
+	}
+
     });
 
 }
@@ -286,7 +317,7 @@ function eventObj(obj) {
     h += '<button class="btn" type="button" onClick="addVolume(\'' + obj._id + '\'); return false;">+</button>';
     h += '</div>';
     h += '<br class="clearfix" style="margin-bottom: 10px;" />';
-    h += '<div class="eventFiles" id="eventFiles' + obj._id + '"></div>';
+    h += '<div class="eventFiles"><div style="width: auto; white-space: nowrap" id="eventFiles' + obj._id + '"></div></div>';
 
     h += '</div>';
 
@@ -298,7 +329,7 @@ function eventObj(obj) {
 
 $('#allEventsLink').on("click", function (event) {
     event.preventDefault();
-    showEvents();
+    showEvents(null,'created',true);
 });
 
 $('#loginButton').on("click", function (event) {
@@ -362,10 +393,10 @@ function shuffleArray(array) {
 function fileIcon(file) {
     var h = '<div class="fileIcon">';
     h += '<a target="_blank" href="' + serverApi + '/file/' + file.fileId + '/' + file.name + '">';
-    if (file.thumbs != undefined) {
+    if (typeof file.thumbs !== 'undefined') {
         // display image thumbnail
         h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
-    } else if (file.videoThumb != undefined) {
+    } else if (typeof file.videoThumb !== 'undefined') {
     	   // display video thumbnail
     	   h += '<img src="' + serverApi + '/file?fileId=' + file.videoThumb.fileId + '" />';
     } else {

@@ -154,6 +154,8 @@ id - STR id of a single event to return
 sort - STR name of field to sort by ['created','lastView','lastEdit','numEdits','numViews']
 volumes - restrict to comma separated list of volumes
 reverseOrder - BOOLEAN true for <
+limit - limit results to number
+last - show after last
 
 RESPONSE CODES
 200 - Valid
@@ -194,8 +196,21 @@ router.get('/events').bind(function (req, res, params) {
 
         }
 
+	// setup limit
+	if (typeof params.limit === 'undefined') {
+		params.limit = 0;
+	}
+
+	if (typeof params.last !== 'undefined') {
+		if (so[Object.keys(so)[0]] === -1) {
+			f[Object.keys(so)[0]] = {'$lt':Number(params.last)};
+		} else {
+			f[Object.keys(so)[0]] = {'$gt':Number(params.last)};
+		}
+	}
+
         db.collection('e', function (err, collection) {
-            collection.find(f).sort(so).toArray(function (err, docs) {
+            collection.find(f).sort(so).limit(Number(params.limit)).toArray(function (err, docs) {
                 if (err) {
                     res.send(500, {}, {
                         'error': err
