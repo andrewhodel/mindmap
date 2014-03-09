@@ -11,6 +11,15 @@ html,body {
     margin: 20px 0;
 }
 
+#toolTip {
+	position: absolute;
+	display: none;
+	z-index: 99;
+	border: 1px solid #000;
+	background-color: #fff;
+	padding: 20px;
+}
+
 #loginHolder {
     width: 100%;
     height: 100%;
@@ -35,6 +44,10 @@ html,body {
     width: 80%;
     margin: auto;
     padding-top: 10px;
+}
+
+#mainNav {
+	display: none;
 }
 
 .eventItem {
@@ -212,7 +225,7 @@ html,body {
     border-bottom: 1px solid rgb(51, 51, 51);
     margin-top: 10px;
     background-color: #fff;
-    height: 40px;
+    height: 60px;
     margin-bottom: 20px;
 }
 
@@ -222,7 +235,6 @@ html,body {
     color: rgb(91, 183, 91);
     font-weight: bold;
     font-style: italic;
-    margin-top: 12px;
 }
 
 #elhTotal {

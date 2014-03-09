@@ -1,5 +1,5 @@
 // helper function for all API calls
-var serverApi = 'http://192.168.1.12:8000';
+var serverApi = 'http://192.168.40.42:8000';
 
 function apiCall(endpoint, requestType, requestData, callback) {
 
@@ -150,8 +150,8 @@ if (typeof last !== 'undefined') {
     apiCall('/events', 'GET', mys, function (err, data) {
         for (var i = 0; i < data.events.length; i++) {
 
-		console.log('got object :');
-		console.log(data.events[i]);
+		//console.log('got object :');
+		//console.log(data.events[i]);
 
                     eventData(data.events[i]._id, true, function (data1) {
             		$("#mainWindow").append(eventObj(this.d));
@@ -294,12 +294,11 @@ function eventObj(obj) {
         for (var i = 0; i < obj.volumes.length; i++) {
 
     h += '<div class="btn-group">';
-    h += '<button class="btn btn-success" onClick="showEvents(\'' + obj.volumes[i] + '\'); return false;">' + obj.volumes[i] + '</button>';
+    h += '<button class="btn btn-success" onMouseOver="volumeConnections(\'' + obj.volumes[i] + '\', event); return false;" onClick="showEvents(\'' + obj.volumes[i] + '\'); return false;">' + obj.volumes[i] + '</button>';
     h += '<button class="btn btn-success dropdown-toggle" data-toggle="dropdown">';
     h += '<span class="caret"></span>';
     h += '</button>';
     h += '<ul class="dropdown-menu">';
-            h += '<li><a href="#" style="font-size: .8em;" onClick="volumeConnections(\'' + obj.volumes[i] + '\'); return false;">Connections</a></li>';
             h += '<li><a href="#" style="font-size: .8em;" onClick="delVolume(\'' + obj._id + '\',\'' + obj.volumes[i] + '\'); return false;">Remove from Event</a></li>';
 
     h += '</ul>';
@@ -329,6 +328,9 @@ function eventObj(obj) {
 
 $('#allEventsLink').on("click", function (event) {
     event.preventDefault();
+    // set nav active
+    $('.navbar li.active').removeClass('active');
+	 $('#allEventsLink').parent().addClass('active');
     showEvents(null,'created',true);
 });
 
@@ -367,6 +369,9 @@ $('#logoutLink').on("click", function (event) {
 });
 
 function showVolumes() {
+	 // set nav active
+	 $('.navbar li.active').removeClass('active');
+	 $('#volumesLink').parent().addClass('active');
     $("#mainWindow").html('');
 
     apiCall('/volumes', 'GET', {}, function (err, data) {
@@ -520,6 +525,10 @@ function addFilesToEvent(eventId) {
 
 $('#filebinLink').on("click", function (event) {
     event.preventDefault();
+    
+    // set nav active
+	 $('.navbar li.active').removeClass('active');
+	 $('#filebinLink').parent().addClass('active');
 
     var h = '<div id="filebinCon"><div id="filebinFiles"></div></div><div id="filebinNav"><div id="uploadPane">';
     h += '<h3>Upload</h3>';
@@ -627,6 +636,11 @@ $('#filebinLink').on("click", function (event) {
 
 $('#newEventLink').on("click", function (event) {
     event.preventDefault();
+    
+    // set nav active
+	 $('.navbar li.active').removeClass('active');
+	 $('#newEventLink').parent().addClass('active');
+	 
     var h = '<form>';
     h += '<fieldset>';
     h += '<h3>New Event</h3>';
@@ -748,7 +762,15 @@ function delVolume(id, v) {
 
 }
 
-function volumeConnections(v) {
+$('#toolTip').mouseleave(function() {
+		$('#toolTip').hide('fast');
+});
+
+function volumeConnections(v, myEvent) {
+	 // create tooltip
+	 $('#toolTip').css({top:myEvent.pageY+40, left:myEvent.pageX+0});
+	 $('#toolTip').html('<strong>Related Volumes:</strong><br />');
+    $('#toolTip').show();
     apiCall('/volumes', 'GET', {
         'single': v
     }, function (err, data) {
@@ -756,12 +778,11 @@ function volumeConnections(v) {
         if (err) {
             alert(err.error);
         } else {
-            var s = '';
             for (var key in data.volumes[0].connections) {
                 var obj = data.volumes[0].connections[key];
-                s += key + ':' + obj + ' ';
+                $('#toolTip').append('<button class="btn btn-success" onClick="showEvents(\'' + key + '\'); return false;">' + key + ':' + obj + '</button> ');
             }
-            alert(s);
+            
         }
 
     });
