@@ -2,6 +2,8 @@
 
 var config = {}
 
+config.serverPort = 8443;
+
 config.mongo = {};
 
 config.mongo.dbname = 'mindmap';

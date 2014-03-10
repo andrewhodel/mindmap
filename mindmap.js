@@ -5,7 +5,8 @@ var async = require('async');
 var bcrypt = require('bcrypt');
 var fs = require('fs');
 var url = require('url');
-var http = require('http');
+var https = require('https');
+var static = require('node-static');
 var marked = require('marked');
 var multiparty = require('multiparty');
 var util = require('util');
@@ -1864,7 +1865,17 @@ function videoThumb(fileId, filepath, cb) {
 db.open(function (err, db) {
     if (db) {
 
-        http.createServer(function (request, response) {
+		var options = {
+            key: fs.readFileSync('./keys/privatekey.pem'),
+            cert: fs.readFileSync('./keys/certificate.pem')
+        };
+
+        var fss = new static.Server('./i');
+
+        https.createServer(options, httpsConnection).listen(config.serverPort);
+        console.log('listening on port ' + config.serverPort);
+
+        function httpsConnection(request, response) {
 
             console.log('###### ' + request.method + ' ' + request.url + " ######\n");
 
@@ -2077,9 +2088,10 @@ db.open(function (err, db) {
                         }
                     });
 
-                } else {
+                } else if (up.pathname.indexOf('/api') == 0) {
 
                     // this is an API request
+                    request.url = request.url.substring(4);
                     var body = "";
                     request.addListener('data', function (chunk) {
                         body += chunk
@@ -2095,12 +2107,15 @@ db.open(function (err, db) {
                         });
                     });
 
+                } else {
+                	request.addListener('end', function () {
+                    fss.serve(request, response);
+                }).resume();
                 }
 
             }
 
-        }).listen(8000);
-        console.log('listening on port 8000');
+        }
 
         // local memory update loop
         function ml() {

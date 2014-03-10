@@ -1,6 +1,4 @@
 // helper function for all API calls
-var serverApi = 'http://192.168.40.42:8000';
-
 function apiCall(endpoint, requestType, requestData, callback) {
 
     if ($.cookie('username') && $.cookie('password')) {
@@ -12,7 +10,7 @@ function apiCall(endpoint, requestType, requestData, callback) {
     }
 
     var request = $.ajax({
-        url: serverApi + endpoint,
+        url: '/api' + endpoint,
         type: requestType,
         data: requestData,
         dataType: "json",
@@ -377,8 +375,22 @@ function showVolumes() {
     apiCall('/volumes', 'GET', {}, function (err, data) {
         //console.log(data);
 
+			var maxPercent = 250, minPercent = 80;
+			var max = 1, min = 999, count = 0;
+
+			for (var i = 0; i < data.volumes.length; i++) {
+				count = data.volumes[i].count;
+				max = (count > max ? count : max);
+				min = (min > count ? count : min);
+         }
+
+			var total, link, size;
+			var multiplier = (maxPercent-minPercent)/(max-min);
+
         for (var i = 0; i < data.volumes.length; i++) {
-                $("#mainWindow").append('<button class="btn btn-large btn-success" style="margin: 4px;" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;">' + data.volumes[i].name + ' (' + data.volumes[i].count + ')</button> ');
+        	count = data.volumes[i].count;
+        	size = minPercent + ((max-(max-(count-min)))*multiplier)+'%';
+        		$("#mainWindow").append('<button class="btn btn-large btn-success" style="font-size: '+size+'; margin: 4px;" onClick="showEvents(\'' + data.volumes[i].name + '\'); return false;"><strong>' + data.volumes[i].name + '</strong> (' + data.volumes[i].count + ')</button> ');
         }
 
     });
@@ -397,13 +409,13 @@ function shuffleArray(array) {
 
 function fileIcon(file) {
     var h = '<div class="fileIcon">';
-    h += '<a target="_blank" href="' + serverApi + '/file/' + file.fileId + '/' + file.name + '">';
+    h += '<a target="_blank" href="/file/' + file.fileId + '/' + file.name + '">';
     if (typeof file.thumbs !== 'undefined') {
         // display image thumbnail
-        h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+        h += '<img src="/file?fileId=' + file.thumbs[0].fileId + '" />';
     } else if (typeof file.videoThumb !== 'undefined') {
     	   // display video thumbnail
-    	   h += '<img src="' + serverApi + '/file?fileId=' + file.videoThumb.fileId + '" />';
+    	   h += '<img src="/file?fileId=' + file.videoThumb.fileId + '" />';
     } else {
         // display generic icon
         h += '<img src="img/fileicon.png" />';
@@ -419,10 +431,10 @@ function fileInBin(file, eventId) {
     var h = '<div class="fileInBin">';
     if (file.thumbs != undefined) {
         // display image thumbnail
-        h += '<img src="' + serverApi + '/file?fileId=' + file.thumbs[0].fileId + '" />';
+        h += '<img src="/file?fileId=' + file.thumbs[0].fileId + '" />';
     } else if (file.videoThumb != undefined) {
     	   // display video thumbnail
-    	   h += '<img src="' + serverApi + '/file?fileId=' + file.videoThumb.fileId + '" />';
+    	   h += '<img src="/file?fileId=' + file.videoThumb.fileId + '" />';
     } else {
         // display generic icon
         h += '<img src="img/fileicon.png" />';
@@ -431,7 +443,7 @@ function fileInBin(file, eventId) {
      h += '<span><a href="#" onClick="moveFileToEvent(\'' + file.fileId + '\',\'' + eventId + '\'); return false;">Move to event</a></span>';
     }
     h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\'); return false;">Delete file</a></span>';
-    h += '<span><a target="_blank" href="' + serverApi + '/file/' + file.fileId + '/' + file.name + '">Open file</a></span>';
+    h += '<span><a target="_blank" href="/file/' + file.fileId + '/' + file.name + '">Open file</a></span>';
     h += '<span>' + file.name + '</span>';
     h += '</div>';
     return h;
@@ -627,7 +639,7 @@ $('#filebinLink').on("click", function (event) {
         }
 
         // send xhr
-        xhr.open('POST', serverApi + '/upload');
+        xhr.open('POST', '/upload');
         xhr.send(formdata);
 
     });
