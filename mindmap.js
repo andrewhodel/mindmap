@@ -1599,6 +1599,8 @@ function fileToDb(fileId, filepath, deleteFile, cb) {
 // function to process a file
 function processFile(filepath, name, cb) {
 
+    console.log('processFile',filepath,name);
+
     var fileId = new mongodb.ObjectID();
 
     var m = mime.lookup(filepath);
@@ -1895,6 +1897,8 @@ db.open(function (err, db) {
                 // check if this is a file upload
                 if (up.pathname === '/upload' && request.method === 'POST') {
 
+			console.log('file upload');
+
                     // parse a file upload
                     var form = new multiparty.Form();
 
@@ -1907,6 +1911,7 @@ db.open(function (err, db) {
 
                     form.on('close', function () {});
 
+/*
                     var multipartybug = [];
 
                     form.on('file', function (name, file) {
@@ -1915,25 +1920,25 @@ db.open(function (err, db) {
 
 
                     });
+*/
 
                     form.parse(request, function (err, fields, files) {
-                        if ('username' == conf.username && bcrypt.compareSync('password', conf.password)) {
-                            // process files
-                            function iterate(file, cb) {
-                                // runs once for each file
-                                processFile(file.path, file.originalFilename, function (err) {
-                                    cb(err, null);
-                                });
-                            }
 
-                            async.map(multipartybug, iterate, function (err, results) {
+                        if (fields.username[0] == conf.username && bcrypt.compareSync(fields.password[0], conf.password)) {
 
+				for (var i=0; i<files.Filedata.length; i++) {
+					processFile(files.Filedata[i].path, files.Filedata[i].originalFilename, function (err) {
+						if (err) {
+							console.log('file upload error in function processFile()');
+						}
+					});
+				}
+
+				// success response
                                 response.statusCode = 200;
                                 response.setHeader("Content-Type", "text/html");
                                 response.setHeader('Access-Control-Allow-Origin', '*');
                                 response.end('success');
-
-                            });
 
                         } else {
                             response.statusCode = 401;
