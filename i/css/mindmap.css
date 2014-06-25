@@ -160,7 +160,7 @@ html,body {
     color: #888;
 }
 
-.fileIcon {
+.fileThumbForEvent {
     display: block;
     float: left;
     margin-left: 2px;
@@ -175,7 +175,7 @@ html,body {
 	font-size: .8em;
 }
 
-.fileInBin {
+.fileThumbForBin {
     display: inline-block;
     margin: 10px;
     height: 100px;

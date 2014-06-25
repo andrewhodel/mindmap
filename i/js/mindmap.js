@@ -159,7 +159,7 @@ if (typeof last !== 'undefined') {
 
                         loadFilebinFiles(this.d._id, function (data2) {
                             for (var ii = 0; ii < data2.length; ii++) {
-                                $('#eventFiles' + this.d._id).append(fileIcon(data2[ii]));
+                                $('#eventFiles' + this.d._id).append(fileThumbForEvent(data2[ii]));
                             }
                         }.bind({
         	        	d: this.d
@@ -407,8 +407,16 @@ function shuffleArray(array) {
     return array;
 }
 
-function fileIcon(file) {
-    var h = '<div class="fileIcon">';
+function bytesToSize(bytes) {
+   if(bytes == 0) return '0 Byte';
+   var k = 1000;
+   var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+   var i = Math.floor(Math.log(bytes) / Math.log(k));
+   return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+}
+
+function fileThumbForEvent(file) {
+    var h = '<div class="fileThumbForEvent">';
     h += '<a target="_blank" href="/file/' + file.fileId + '/' + file.name + '">';
     if (typeof file.thumbs !== 'undefined') {
         // display image thumbnail
@@ -422,13 +430,14 @@ function fileIcon(file) {
     }
     h += '</a>';
     h += '<p class="filename">' + file.name + '';
+    h += '<br />' + bytesToSize(file.size);
     h += '<br /><a href="#" onClick="fileInfo(\'' + file.fileId + '\'); return false;">I</a> | <a href="#" onClick="removeFileFromEvent(\'' + file.fileId + '\',\'' + file.event + '\'); return false;">X</a></p>';
     h += '</div>';
     return h;
 }
 
-function fileInBin(file, eventId) {
-    var h = '<div class="fileInBin">';
+function fileThumbForBin(file, eventId) {
+    var h = '<div class="fileThumbForBin">';
     if (file.thumbs != undefined) {
         // display image thumbnail
         h += '<img src="/file?fileId=' + file.thumbs[0].fileId + '" />';
@@ -445,6 +454,7 @@ function fileInBin(file, eventId) {
     h += '<span><a href="#" onClick="deleteFile(\'' + file.fileId + '\',\'' + eventId + '\'); return false;">Delete file</a></span>';
     h += '<span><a target="_blank" href="/file/' + file.fileId + '/' + file.name + '">Open file</a></span>';
     h += '<span>' + file.name + '</span>';
+    h += '<span>' + bytesToSize(file.size) + '</span>';
     h += '</div>';
     return h;
 }
@@ -462,7 +472,7 @@ function moveFileToEvent(fileId, eventId) {
             $('#filebinFiles').html('');
             loadFilebinFiles(undefined, function (data) {
                 for (var i = 0; i < data.length; i++) {
-                    $('#filebinFiles').append(fileInBin(data[i], eventId));
+                    $('#filebinFiles').append(fileThumbForBin(data[i], eventId));
                 }
             });
         }
@@ -483,7 +493,7 @@ function removeFileFromEvent(fileId, eventId) {
             $('#eventFiles' + eventId).html('');
             loadFilebinFiles(eventId, function (data) {
                 for (var i = 0; i < data.length; i++) {
-                    $('#eventFiles' + eventId).append(fileIcon(data[i]));
+                    $('#eventFiles' + eventId).append(fileThumbForEvent(data[i]));
                 }
             });
         }
@@ -503,7 +513,7 @@ function deleteFile(fileId, eventId) {
             $('#filebinFiles').html('');
             loadFilebinFiles(undefined, function (data) {
                 for (var i = 0; i < data.length; i++) {
-                    $('#filebinFiles').append(fileInBin(data[i], eventId));
+                    $('#filebinFiles').append(fileThumbForBin(data[i], eventId));
                 }
             });
         }
@@ -564,7 +574,7 @@ $('#filebinLink').on("click", function (event) {
 
     loadFilebinFiles(undefined, function (data) {
         for (var i = 0; i < data.length; i++) {
-            $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+            $('#filebinFiles').append(fileThumbForBin(data[i], myfilebinToEvent));
         }
     });
 
@@ -583,7 +593,7 @@ $('#filebinLink').on("click", function (event) {
                     $('#fetchUrl').val('');
                     loadFilebinFiles(undefined, function (data) {
                         for (var i = 0; i < data.length; i++) {
-                            $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+                            $('#filebinFiles').append(fileThumbForBin(data[i], myfilebinToEvent));
                         }
                     });
                 }
@@ -602,10 +612,10 @@ $('#filebinLink').on("click", function (event) {
         var xhr = new XMLHttpRequest();
         
         // load progress bar
-            var hh = '<div class="progress">';
-            hh += '<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressPercentBar" style="width: 0%;"></div>';
-            hh += '</div>';
-            $('#uploadProgress').html(hh);
+        var hh = '<div class="progress">';
+        hh += '<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressPercentBar" style="width: 0%;"></div>';
+        hh += '</div>';
+        $('#uploadProgress').html(hh);
 
         // progress event
         xhr.upload.addEventListener("progress", function (e) {
@@ -624,7 +634,7 @@ $('#filebinLink').on("click", function (event) {
         xhr.upload.addEventListener("loadend", function (e) {
             loadFilebinFiles(undefined, function (data) {
                 for (var i = 0; i < data.length; i++) {
-                    $('#filebinFiles').append(fileInBin(data[i], myfilebinToEvent));
+                    $('#filebinFiles').append(fileThumbForBin(data[i], myfilebinToEvent));
                 }
             });
             $('#uploadProgress').html('');
