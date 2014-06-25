@@ -602,8 +602,8 @@ $('#filebinLink').on("click", function (event) {
         var xhr = new XMLHttpRequest();
         
         // load progress bar
-            var hh = '<div class="progress progress-info">';
-            hh += '<div class="bar" id="progressPercentBar" style="width: 1%;"></div>';
+            var hh = '<div class="progress">';
+            hh += '<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressPercentBar" style="width: 0%;"></div>';
             hh += '</div>';
             $('#uploadProgress').html(hh);
 
