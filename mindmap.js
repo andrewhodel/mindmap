@@ -1768,8 +1768,8 @@ function videoThumb(fileId, filepath, cb) {
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/100px_' + basename + '.png';
-                exec('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname, function (error, stdout, stderr) {
-                    console.log('avconv -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname);
+                exec('ffmpeg -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname, function (error, stdout, stderr) {
+                    console.log('ffmpeg -itsoffset -4 -i ' + filepath + ' -vcodec png -vframes 1 -an -f rawvideo -vf scale=100:-1 -y ' + thisname);
                     console.log(stdout);
                     console.log(stderr);
                     callback(null, thisname);
@@ -1793,8 +1793,8 @@ function videoThumb(fileId, filepath, cb) {
                 var basename = path.basename(filepath);
                 var dirname = path.dirname(filepath);
                 var thisname = dirname + '/' + basename + '.webm';
-                exec('avconv -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname, function (error, stdout, stderr) {
-                    console.log('avconv -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname);
+                exec('ffmpeg -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname, function (error, stdout, stderr) {
+                    console.log('ffmpeg -i ' + filepath + ' -cpu-used 0 -b:v 1M -qmin 10 -qmax 42 -maxrate 1M -bufsize 2M ' + thisname);
                     console.log(stdout);
                     console.log(stderr);
                     callback(null, thisname);

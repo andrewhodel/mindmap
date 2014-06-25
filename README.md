@@ -14,9 +14,11 @@ cd ..
 * install deps
 
 ```
-sudo apt-get install avconv imagemagick
+sudo apt-get install ffmpeg imagemagick
 
-npm install journey mongodb async bcrypt node-static marked multiparty mime imagemagick forever
+npm install -g forever
+
+npm install journey mongodb async bcrypt node-static marked multiparty mime imagemagick
 ```
 
 * edit config.js
