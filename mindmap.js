@@ -783,7 +783,10 @@ router.post('/event').bind(function(req, res, params) {
 						i.created = Number(params.created);
 					}
 
+					console.log('adding ',i);
+
 					collection.insert(i, function(err, docs) {
+
 						if (err) {
 							res.send(500, {}, {
 								'error': err
@@ -791,11 +794,11 @@ router.post('/event').bind(function(req, res, params) {
 						} else {
 							res.send({
 								'success': 1,
-								'event': docs[0]
+								'event': docs.ops[0]
 							});
 							db.collection('ed', function(err, collection) {
 								collection.insert({
-									'eId': docs[0]._id,
+									'eId': docs.ops[0]._id,
 									'd': params.d
 								}, function(err, docs) {});
 							});
