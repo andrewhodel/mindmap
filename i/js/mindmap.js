@@ -175,7 +175,7 @@ if (typeof last !== 'undefined') {
 
                 if (isInView) {
 			console.log('got inview for '+tid);
-			getRangedEvents(mys, this.d[mys.sort]);
+			getRangedEvents(mys, tid);
                     if (visiblePartY == 'top') {
                         // top part of element is visible
                     } else if (visiblePartY == 'bottom') {

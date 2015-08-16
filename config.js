@@ -2,7 +2,7 @@
 
 var config = {}
 
-config.serverPort = 8443;
+config.serverPort = 8888;
 
 config.mongo = {};
 
