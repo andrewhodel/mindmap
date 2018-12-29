@@ -2,7 +2,7 @@ var config = require('./config');
 var journey = require('journey');
 var mongodb = require('mongodb');
 var async = require('async');
-var bcrypt = require('bcrypt');
+var bcrypt = require('bcryptjs');
 var fs = require('fs');
 var url = require('url');
 var https = require('https');
@@ -1589,7 +1589,7 @@ function fileToDb(fileId, filepath, deleteFile, cb) {
 
 	// Open a new file
 	var gridStore = new mongodb.GridStore(db, fileId, 'w', {
-		'content_type': mime.lookup(filepath)
+		'content_type': mime.getType(filepath)
 	});
 
 	// Open the new file
@@ -1620,7 +1620,7 @@ function processFile(filepath, name, cb) {
 
 	var fileId = new mongodb.ObjectID();
 
-	var m = mime.lookup(filepath);
+	var m = mime.getType(filepath);
 
 	var filestats = fs.statSync(filepath);
 
@@ -1882,6 +1882,9 @@ function videoThumb(fileId, filepath, cb) {
 
 // db open START
 db.open(function(err, db) {
+
+	//console.log('db open err, db', err, db);
+
 	if (db) {
 
 		var options = {
@@ -1891,7 +1894,7 @@ db.open(function(err, db) {
 
 		var fss = new static.Server('./i');
 
-		https.createServer(options, httpsConnection).listen(config.serverPort);
+		https.createServer(options, httpsConnection).listen(config.serverPort, '0.0.0.0');
 		console.log('listening on port ' + config.serverPort);
 
 		function httpsConnection(request, response) {
@@ -2151,6 +2154,7 @@ db.open(function(err, db) {
 		// startup
 
 		// indexes
+		console.log('generating indexes');
 
 		// events
 		db.ensureIndex('e', 'created', {
@@ -2250,6 +2254,7 @@ db.open(function(err, db) {
 				console.log(err)
 			}
 		});
+		console.log('indexes generated');
 
 		// boot time volume connections/relations
 

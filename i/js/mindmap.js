@@ -156,6 +156,7 @@ function getRangedEvents(mys, last) {
 			// have to add the event as an html element first, then fill it with data
 			// because the eventData calls may return in a non sorted order per REST latency
 			$("#mainWindow").append(eventObj(data.events[i]));
+
 			eventData(data.events[i]._id, true, function(data1) {
 				$('#eventText' + this.d._id).html(data1.eventData.d);
 
@@ -239,6 +240,7 @@ function eventUpdate(id) {
 		if (!err) {
 			//console.log(data);
 			$('#eventItem' + id).replaceWith(eventObj(data.events[0]));
+
 			eventData(id, true, function(data) {
 				$('#eventText' + id).html(data.eventData.d);
 			});
@@ -682,6 +684,21 @@ $('#newEventLink').on("click", function(event) {
 	h += '</form>';
 	$("#mainWindow").html(h);
 
+	// insert tab presses as \t for all textareas
+	var textareas = document.getElementsByTagName('textarea');
+	var count = textareas.length;
+	for(var i=0;i<count;i++){
+
+		textareas[i].onkeydown = function(e){
+			if(e.keyCode==9 || e.which==9){
+				e.preventDefault();
+				var s = this.selectionStart;
+				this.value = this.value.substring(0,this.selectionStart) + "\t" + this.value.substring(this.selectionEnd);
+				this.selectionEnd = s+1; 
+			}
+		}
+	}
+
 });
 
 function newEventSubmit() {
@@ -712,6 +729,22 @@ function editEvent(id) {
 	eventData(id, false, function(data) {
 		$('#eventEditText' + id).html(data.eventData.d);
 	});
+
+	// insert tab presses as \t for all textareas
+	var textareas = document.getElementsByTagName('textarea');
+	var count = textareas.length;
+	for(var i=0;i<count;i++){
+
+		textareas[i].onkeydown = function(e){
+			if(e.keyCode==9 || e.which==9){
+				e.preventDefault();
+				var s = this.selectionStart;
+				this.value = this.value.substring(0,this.selectionStart) + "\t" + this.value.substring(this.selectionEnd);
+				this.selectionEnd = s+1; 
+			}
+		}
+	}
+
 }
 
 function cancelEdit(id) {

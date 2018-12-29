@@ -1,0 +1,15 @@
+{
+  "name": "mindmap",
+  "description": "map your knowledge",
+  "dependencies": {
+    "async": "2.5.x",
+    "bcryptjs": "2.4.x",
+    "imagemagick": "0.1.x",
+    "journey": "0.4.0-pre-3",
+    "marked": "0.3.x",
+    "mime": "2.0.x",
+    "mongodb": "2.2.x",
+    "multiparty": "4.1.x",
+    "node-static": "0.7.x"
+  }
+}
